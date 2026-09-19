@@ -1,12 +1,14 @@
 {
-  "name": "distribusihub",
+  "name": "mlt",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Distributor Management System untuk distributor bahan pokok",
+  "description": "MLT — Mas Lukman Telur. Sistem manajemen distributor bahan pokok.",
   "scripts": {
     "dev": "tsx watch --ignore data server.ts",
     "seed": "tsx scripts/seed.ts",
+    "reset": "tsx scripts/reset.ts",
+    "akun": "tsx scripts/akun.ts",
     "build:web": "vite build",
     "build:server": "esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "build": "rm -rf dist && npm run build:web && npm run build:server",

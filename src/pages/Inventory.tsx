@@ -35,7 +35,7 @@ export default function Inventory() {
           <Tombol
             onClick={() =>
               eksporExcel(
-                'stok-distribusihub',
+                'stok-mlt',
                 baris.map((b) => ({
                   SKU: b.sku, Produk: b.nama, Kategori: b.kategori, Satuan: b.satuan,
                   Stok: b.stok, 'Stok minimum': b.stok_minimum, 'Harga beli': b.harga_beli,
@@ -54,7 +54,7 @@ export default function Inventory() {
         <KartuKpi label="Nilai persediaan" nilai={rupiahRingkas(nilaiStok)} nilaiPenuh={rupiah(nilaiStok)} catatan="Pada harga beli terakhir" />
         <KartuKpi label="Produk aktif" nilai={angka(data.length)} />
         <Kartu className="px-4 py-3.5">
-          <p className="mb-2.5 text-[12px] font-medium text-ink-2">Sebaran status</p>
+          <p className="mb-2.5 text-mini font-medium text-ink-2">Sebaran status</p>
           <BatangStatus ringkas={ringkas} />
         </Kartu>
       </div>
@@ -85,10 +85,10 @@ export default function Inventory() {
             </thead>
             <tbody>
               {baris.map((p) => (
-                <tr key={p.id} className="hover:bg-surface-2">
+                <tr key={p.id} className="transition-colors duration-150 hover:bg-surface-2">
                   <Td>
                     <span className="font-medium text-ink">{p.nama}</span>
-                    <span className="block text-[11.5px] text-ink-3">{p.sku}</span>
+                    <span className="block text-mikro text-ink-3">{p.sku}</span>
                   </Td>
                   <Td>{p.kategori ?? '—'}</Td>
                   <Td>{p.supplier ?? '—'}</Td>
@@ -97,7 +97,7 @@ export default function Inventory() {
                   <Td kanan>{rupiah(p.nilai_stok)}</Td>
                   <Td><Lencana nada={NADA[p.status_stok as keyof typeof NADA]}>{LABEL[p.status_stok as keyof typeof LABEL]}</Lencana></Td>
                   <Td>
-                    <Link to={`/inventory/mutasi?produk=${p.id}`} className="text-[12px] font-medium text-brand hover:underline">
+                    <Link to={`/inventory/mutasi?produk=${p.id}`} className="text-mini font-medium text-brand-teks hover:underline">
                       Kartu stok
                     </Link>
                   </Td>

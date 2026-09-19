@@ -143,7 +143,7 @@ export default function Kulakan() {
             </thead>
             <tbody>
               {baris.map((b) => (
-                <tr key={b.produk_id} className="hover:bg-surface-2">
+                <tr key={b.produk_id} className="transition-colors duration-150 hover:bg-surface-2">
                   <Td>
                     <input
                       type="checkbox"
@@ -161,7 +161,7 @@ export default function Kulakan() {
                   </Td>
                   <Td>
                     <span className="font-medium text-ink">{b.nama}</span>
-                    <span className="block text-[11.5px] text-ink-3">
+                    <span className="block text-mikro text-ink-3">
                       {b.sku} ·{' '}
                       {b.hari_tersisa == null ? 'tidak bergerak 30 hari' : `stok cukup ${b.hari_tersisa} hari lagi`}
                     </span>
@@ -183,7 +183,7 @@ export default function Kulakan() {
         )}
       </Kartu>
 
-      <p className="mt-3 max-w-3xl text-[12px] leading-relaxed text-ink-3">
+      <p className="mt-3 max-w-3xl text-mini leading-relaxed text-ink-3">
         Titik pesan = rata-rata penjualan harian × lead time supplier + safety stock. Saran pembelian mengarahkan stok ke
         titik pesan ditambah cakupan penjualan beberapa hari, lalu dibulatkan ke kelipatan pembelian produk — sehingga
         setelah barang datang, stok benar-benar berada di atas ambang, bukan persis menyentuhnya.

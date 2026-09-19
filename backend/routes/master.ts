@@ -351,7 +351,7 @@ rutMaster.put(
 
 /** Kunci yang boleh diubah lewat antarmuka, beserta nilai bawaannya. */
 const PENGATURAN_DIIZINKAN: Record<string, string> = {
-  nama_usaha: 'DistribusiHub',
+  nama_usaha: 'MLT — Mas Lukman Telur',
   absensi_lat: '-7.797068',
   absensi_lng: '110.370529',
   absensi_radius_m: '150',

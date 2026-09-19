@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ClipboardCheck } from 'lucide-react';
 import { JudulHalaman } from '../components/layout/AppShell';
-import { Galat, Kartu, KepalaKartu, Medan, Memuat, Tabel, Td, Th, Tombol } from '../components/ui/Dasar';
+import { Galat, Kartu, KepalaKartu, Kosong, Medan, Memuat, Tabel, Td, Th, Tombol } from '../components/ui/Dasar';
 import { useApi } from '../lib/useApi';
 import { api, GalatApi } from '../lib/api';
 import { angka } from '../lib/format';
@@ -51,6 +51,20 @@ export default function Opname() {
 
   if (memuat || !produk) return <Memuat tinggi="h-64" />;
 
+  if (produk.length === 0) {
+    return (
+      <>
+        <JudulHalaman judul="Stock opname" deskripsi="Masukkan hasil hitung fisik" />
+        <Kartu>
+          <Kosong
+            judul="Belum ada produk untuk dihitung"
+            pesan="Opname membandingkan hasil hitung fisik dengan stok sistem. Daftarkan produk lebih dulu, lalu halaman ini akan menampilkan seluruhnya untuk dihitung."
+          />
+        </Kartu>
+      </>
+    );
+  }
+
   return (
     <>
       <JudulHalaman
@@ -59,8 +73,8 @@ export default function Opname() {
       />
 
       {hasil && (
-        <div className="mb-4 rounded-lg border border-good/30 bg-good/8 px-3 py-2.5 text-[13px] text-ink">
-          <p className="font-medium text-good">Opname tersimpan.</p>
+        <div className="mb-4 rounded-lg border border-good/30 bg-good/8 px-3 py-2.5 text-kecil text-ink">
+          <p className="font-medium text-good-teks">Opname tersimpan.</p>
           <p className="text-ink-2">
             {hasil.jumlah_disesuaikan} produk disesuaikan. Setiap perubahan tercatat di mutasi stok dan audit log.
           </p>
@@ -84,10 +98,10 @@ export default function Opname() {
                 const nilai = fisik[p.id];
                 const selisih = nilai === undefined || nilai === '' ? null : Number(nilai) - p.stok;
                 return (
-                  <tr key={p.id} className="hover:bg-surface-2">
+                  <tr key={p.id} className="transition-colors duration-150 hover:bg-surface-2">
                     <Td>
                       <span className="text-ink">{p.nama}</span>
-                      <span className="block text-[11.5px] text-ink-3">{p.sku} · {p.satuan}</span>
+                      <span className="block text-mikro text-ink-3">{p.sku} · {p.satuan}</span>
                     </Td>
                     <Td kanan>{angka(p.stok)}</Td>
                     <Td kanan className="w-[130px]">
@@ -100,7 +114,7 @@ export default function Opname() {
                         className="text-right"
                       />
                     </Td>
-                    <Td kanan className={selisih == null ? 'text-ink-3' : selisih === 0 ? 'text-ink-2' : selisih > 0 ? 'text-good' : 'text-critical'}>
+                    <Td kanan className={selisih == null ? 'text-ink-3' : selisih === 0 ? 'text-ink-2' : selisih > 0 ? 'text-good-teks' : 'text-critical-teks'}>
                       {selisih == null ? '—' : selisih > 0 ? `+${angka(selisih)}` : angka(selisih)}
                     </Td>
                   </tr>
@@ -112,7 +126,7 @@ export default function Opname() {
 
         <Kartu className="h-fit">
           <KepalaKartu judul="Ringkasan" />
-          <div className="flex flex-col gap-3 px-4 py-4 text-[13px]">
+          <div className="flex flex-col gap-3 px-4 py-4 text-kecil">
             <div className="flex justify-between"><span className="text-ink-2">Produk dihitung</span><span className="angka font-medium">{terisi.length}</span></div>
             <div className="flex justify-between"><span className="text-ink-2">Ada selisih</span><span className="angka font-medium">{adaSelisih.length}</span></div>
 

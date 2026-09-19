@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { JudulHalaman } from '../components/layout/AppShell';
-import { Galat, Kartu, Kosong, Lencana, Medan, Memuat, Pilihan, Tabel, Td, Th, Tombol } from '../components/ui/Dasar';
+import { Galat, Kartu, Kosong, Lencana, Medan, Memuat, Pilihan, Tabel, Td, Th, Tombol, RangkaTabel } from '../components/ui/Dasar';
 import { useApi } from '../lib/useApi';
 import { kueri } from '../lib/api';
 import { angka, hariIniISO, rupiah, tanggal } from '../lib/format';
@@ -65,12 +65,12 @@ export default function Pesanan() {
         {galat ? (
           <div className="p-4"><Galat pesan={galat} /></div>
         ) : memuat ? (
-          <Memuat />
+          <RangkaTabel />
         ) : (data ?? []).length === 0 ? (
           <Kosong pesan="Tidak ada pesanan pada rentang ini." />
         ) : (
           <>
-            <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-4 py-2.5 text-[12.5px]">
+            <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-4 py-2.5 text-mini">
               <span className="text-ink-2">{angka(data!.length)} pesanan</span>
               <span className="text-ink-2">
                 Nilai pesanan aktif <span className="angka font-semibold text-ink">{rupiah(total)}</span>
@@ -91,9 +91,9 @@ export default function Pesanan() {
               </thead>
               <tbody>
                 {data!.map((o) => (
-                  <tr key={o.id} className="hover:bg-surface-2">
+                  <tr key={o.id} className="transition-colors duration-150 hover:bg-surface-2">
                     <Td>
-                      <Link to={`/penjualan/${o.id}`} className="font-medium text-ink hover:text-brand hover:underline">{o.nomor}</Link>
+                      <Link to={`/penjualan/${o.id}`} className="font-medium text-ink hover:text-brand-teks hover:underline">{o.nomor}</Link>
                     </Td>
                     <Td>{tanggal(o.tanggal)}</Td>
                     <Td>{o.customer}</Td>

@@ -71,7 +71,7 @@ export default function Katalog() {
         onChange={(e) => setCari(e.target.value)}
         placeholder="Cari produk…"
         aria-label="Cari produk"
-        className="mb-4 w-full max-w-sm rounded-lg border border-line bg-surface px-3 py-2 text-[13px] text-ink placeholder:text-ink-3 focus:border-brand focus:outline-none"
+        className="mb-4 w-full max-w-sm rounded-lg border border-line bg-surface px-3 py-2 text-kecil text-ink placeholder:text-ink-3 focus:border-brand focus:outline-none"
       />
 
       {memuat ? (
@@ -82,10 +82,10 @@ export default function Katalog() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {data!.map((p) => (
             <Kartu key={p.id} className="flex flex-col p-4">
-              <p className="text-[14px] font-medium text-ink">{p.nama}</p>
-              <p className="text-[11.5px] text-ink-3">{p.sku} · per {p.satuan}</p>
-              <p className="mt-2 angka text-[17px] font-semibold text-ink">{rupiah(p.harga_jual)}</p>
-              <p className="mb-3 text-[11.5px] text-ink-3">
+              <p className="text-dasar font-medium text-ink">{p.nama}</p>
+              <p className="text-mikro text-ink-3">{p.sku} · per {p.satuan}</p>
+              <p className="mt-2 angka text-besar font-semibold text-ink">{rupiah(p.harga_jual)}</p>
+              <p className="mb-3 text-mikro text-ink-3">
                 {p.stok > 0 ? `Tersedia ${angka(p.stok)} ${p.satuan}` : 'Stok habis'}
               </p>
 
@@ -98,7 +98,7 @@ export default function Katalog() {
                 >
                   <Minus size={14} />
                 </button>
-                <span className="angka min-w-[2.5rem] text-center text-[14px] font-medium text-ink">{keranjang[p.id] ?? 0}</span>
+                <span className="angka min-w-[2.5rem] text-center text-dasar font-medium text-ink">{keranjang[p.id] ?? 0}</span>
                 <button
                   onClick={() => ubahQty(p.id, 1, p.stok)}
                   disabled={p.stok === 0 || (keranjang[p.id] ?? 0) >= p.stok}
@@ -126,16 +126,16 @@ export default function Katalog() {
         >
           <ul className="flex flex-col gap-2.5">
             {isi.map((i) => (
-              <li key={i.id} className="flex items-baseline justify-between gap-3 text-[13px]">
+              <li key={i.id} className="flex items-baseline justify-between gap-3 text-kecil">
                 <span className="min-w-0">
                   <span className="block truncate text-ink">{i.nama}</span>
-                  <span className="text-[11.5px] text-ink-3">{angka(i.qty)} {i.satuan} × {rupiah(i.harga_jual)}</span>
+                  <span className="text-mikro text-ink-3">{angka(i.qty)} {i.satuan} × {rupiah(i.harga_jual)}</span>
                 </span>
                 <span className="angka shrink-0 font-medium text-ink">{rupiah(i.subtotal)}</span>
               </li>
             ))}
           </ul>
-          <div className="mt-3 flex justify-between border-t border-line pt-3 text-[15px] font-semibold">
+          <div className="mt-3 flex justify-between border-t border-line pt-3 text-sedang font-semibold">
             <span>Total</span>
             <span className="angka">{rupiah(total)}</span>
           </div>

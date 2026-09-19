@@ -24,7 +24,7 @@ import { rutPenjualan } from './backend/routes/penjualan.js';
 initDb();
 
 const app = express();
-const PORT = Number(process.env.PORT) || 4040;
+const PORT = Number(process.env.PORT) || 3335;
 const PRODUKSI = process.env.NODE_ENV === 'production';
 
 app.use(compression());
@@ -34,11 +34,15 @@ app.use(express.json({ limit: '8mb' }));
 
 /* Capacitor memuat halaman dari asalnya sendiri, bukan dari server ini, jadi
    asal-asal tersebut harus disebut. Daftar tertutup, bukan '*', karena
-   permintaan ke API ini membawa token bearer. */
+   permintaan ke API ini membawa token bearer.
+
+   Asal server sendiri diturunkan dari PORT, bukan ditulis tetap: port yang
+   diganti lewat .env akan membuat daftar yang ditulis tangan langsung basi,
+   dan gejalanya muncul jauh belakangan sebagai permintaan yang ditolak. */
 app.use(
   cors({
     origin: [
-      'http://localhost:4040',
+      `http://localhost:${PORT}`,
       'http://localhost:5173',
       'http://localhost',
       'capacitor://localhost',
@@ -88,7 +92,7 @@ async function jalankan() {
   }
 
   app.listen(PORT, () => {
-    console.log(`DistribusiHub berjalan di http://localhost:${PORT} (${PRODUKSI ? 'produksi' : 'pengembangan'})`);
+    console.log(`MLT berjalan di http://localhost:${PORT} (${PRODUKSI ? 'produksi' : 'pengembangan'})`);
   });
 }
 

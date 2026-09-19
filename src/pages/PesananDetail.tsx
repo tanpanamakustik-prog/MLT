@@ -55,7 +55,7 @@ export default function PesananDetail() {
 
   return (
     <>
-      <Link to="/penjualan" className="mb-3 inline-flex items-center gap-1.5 text-[13px] text-ink-2 hover:text-ink print:hidden">
+      <Link to="/penjualan" className="mb-3 inline-flex items-center gap-1.5 text-kecil text-ink-2 hover:text-ink print:hidden">
         <ArrowLeft size={14} /> Kembali ke daftar pesanan
       </Link>
 
@@ -91,7 +91,7 @@ export default function PesananDetail() {
                 <tr key={i.id}>
                   <Td>
                     <span className="text-ink">{i.nama}</span>
-                    <span className="block text-[11.5px] text-ink-3">{i.sku}</span>
+                    <span className="block text-mikro text-ink-3">{i.sku}</span>
                   </Td>
                   <Td kanan>{angka(i.qty)} {i.satuan}</Td>
                   <Td kanan>{rupiah(i.harga)}</Td>
@@ -101,11 +101,11 @@ export default function PesananDetail() {
             </tbody>
           </Tabel>
 
-          <dl className="flex flex-col gap-1.5 px-4 py-3 text-[13px]">
+          <dl className="flex flex-col gap-1.5 px-4 py-3 text-kecil">
             <div className="flex justify-between"><dt className="text-ink-2">Subtotal</dt><dd className="angka">{rupiah(data.subtotal)}</dd></div>
-            <div className="flex justify-between"><dt className="text-ink-2">Diskon</dt><dd className="angka">−{rupiah(data.diskon)}</dd></div>
+            <div className="flex justify-between"><dt className="text-ink-2">Diskon</dt><dd className="angka">{data.diskon > 0 ? `−${rupiah(data.diskon)}` : rupiah(0)}</dd></div>
             <div className="flex justify-between"><dt className="text-ink-2">Ongkir</dt><dd className="angka">{rupiah(data.ongkir)}</dd></div>
-            <div className="flex justify-between border-t border-line pt-1.5 text-[15px] font-semibold"><dt>Total</dt><dd className="angka">{rupiah(data.total)}</dd></div>
+            <div className="flex justify-between border-t border-line pt-1.5 text-sedang font-semibold"><dt>Total</dt><dd className="angka">{rupiah(data.total)}</dd></div>
           </dl>
         </Kartu>
 
@@ -113,11 +113,11 @@ export default function PesananDetail() {
           <Kartu>
             <KepalaKartu judul="Status" />
             <div className="flex flex-col gap-3 px-4 py-4">
-              <div className="flex items-center justify-between gap-2 text-[13px]">
+              <div className="flex items-center justify-between gap-2 text-kecil">
                 <span className="text-ink-2">Pembayaran</span>
                 <Lencana nada={data.status_bayar === 'lunas' ? 'baik' : 'awas'}>{data.status_bayar}</Lencana>
               </div>
-              <div className="flex items-center justify-between gap-2 text-[13px]">
+              <div className="flex items-center justify-between gap-2 text-kecil">
                 <span className="text-ink-2">Pengiriman</span>
                 <Lencana nada={nadaKirim(data.status_kirim)}>{data.status_kirim}</Lencana>
               </div>
@@ -152,7 +152,7 @@ export default function PesananDetail() {
 
           <Kartu>
             <KepalaKartu judul="Customer" />
-            <dl className="flex flex-col gap-2 px-4 py-4 text-[13px]">
+            <dl className="flex flex-col gap-2 px-4 py-4 text-kecil">
               <div className="flex justify-between gap-3"><dt className="text-ink-3">Nama</dt><dd className="text-right text-ink">{data.customer}</dd></div>
               <div className="flex justify-between gap-3"><dt className="text-ink-3">Alamat</dt><dd className="text-right text-ink">{data.alamat ?? '—'}</dd></div>
               <div className="flex justify-between gap-3"><dt className="text-ink-3">Nomor HP</dt><dd className="text-right text-ink">{data.no_hp ?? '—'}</dd></div>
@@ -163,12 +163,12 @@ export default function PesananDetail() {
           {data.pengiriman.length > 0 && (
             <Kartu>
               <KepalaKartu judul="Pengiriman" />
-              <ul className="flex flex-col gap-2 px-4 py-4 text-[13px]">
+              <ul className="flex flex-col gap-2 px-4 py-4 text-kecil">
                 {data.pengiriman.map((g: any) => (
                   <li key={g.id} className="flex items-center justify-between gap-2">
-                    <Link to={`/pengiriman/${g.id}`} className="text-ink hover:text-brand hover:underline">{g.nomor}</Link>
+                    <Link to={`/pengiriman/${g.id}`} className="text-ink hover:text-brand-teks hover:underline">{g.nomor}</Link>
                     <span className="flex items-center gap-2">
-                      <span className="text-[11.5px] text-ink-3">{g.driver ?? 'belum ada driver'}</span>
+                      <span className="text-mikro text-ink-3">{g.driver ?? 'belum ada driver'}</span>
                       <Lencana nada={g.status === 'selesai' ? 'baik' : g.status === 'gagal' ? 'kritis' : 'netral'}>{g.status}</Lencana>
                     </span>
                   </li>
@@ -196,7 +196,7 @@ export default function PesananDetail() {
               <option key={k.id} value={k.id}>{k.nama} — {k.area_kerja ?? 'tanpa rute'}</option>
             ))}
           </Pilihan>
-          <p className="mt-3 text-[12.5px] text-ink-3">
+          <p className="mt-3 text-mini text-ink-3">
             Pesanan berpindah ke status diproses. Driver akan melihat tugas ini di aplikasi lapangan beserta rincian barangnya.
           </p>
         </Dialog>

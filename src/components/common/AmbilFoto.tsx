@@ -26,7 +26,7 @@ export function AmbilFoto({
 
   return (
     <div>
-      <p className="mb-1.5 text-[12px] font-medium text-ink-2">{label}</p>
+      <p className="mb-1.5 text-mini font-medium text-ink-2">{label}</p>
       <input
         ref={masukan}
         type="file"

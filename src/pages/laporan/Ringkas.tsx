@@ -13,7 +13,7 @@ function Blok({ judul, baris }: { judul: string; baris: Array<[string, string]> 
   return (
     <Kartu>
       <KepalaKartu judul={judul} />
-      <dl className="flex flex-col gap-2.5 px-4 py-4 text-[13px]">
+      <dl className="flex flex-col gap-2.5 px-4 py-4 text-kecil">
         {baris.map(([k, v]) => (
           <div key={k} className="flex justify-between gap-3">
             <dt className="text-ink-2">{k}</dt>
@@ -138,7 +138,7 @@ export default function LaporanRingkas() {
         />
       </div>
 
-      <p className="mt-4 max-w-3xl text-[12px] leading-relaxed text-ink-3">
+      <p className="mt-4 max-w-3xl text-mini leading-relaxed text-ink-3">
         Laba kotor dihitung dari penjualan bersih barang dikurangi HPP, tanpa memasukkan ongkir. Ongkir adalah
         penggantian biaya angkut, bukan hasil dagang; memasukkannya akan menaikkan margin setiap kali ada pengiriman
         jauh meskipun barangnya dijual dengan margin yang sama.

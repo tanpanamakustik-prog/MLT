@@ -15,7 +15,7 @@ export default function CustomerDetail() {
 
   return (
     <>
-      <Link to="/customer" className="mb-3 inline-flex items-center gap-1.5 text-[13px] text-ink-2 hover:text-ink">
+      <Link to="/customer" className="mb-3 inline-flex items-center gap-1.5 text-kecil text-ink-2 hover:text-ink">
         <ArrowLeft size={14} /> Kembali ke daftar customer
       </Link>
 
@@ -31,7 +31,7 @@ export default function CustomerDetail() {
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
         <Kartu>
           <KepalaKartu judul="Data customer" />
-          <dl className="flex flex-col gap-2.5 px-4 py-4 text-[13px]">
+          <dl className="flex flex-col gap-2.5 px-4 py-4 text-kecil">
             {[
               ['Alamat', data.alamat ?? '—'],
               ['Nomor HP', data.no_hp ?? '—'],
@@ -63,9 +63,9 @@ export default function CustomerDetail() {
               </thead>
               <tbody>
                 {data.riwayat.map((o: any) => (
-                  <tr key={o.id} className="hover:bg-surface-2">
+                  <tr key={o.id} className="transition-colors duration-150 hover:bg-surface-2">
                     <Td>
-                      <Link to={`/penjualan/${o.id}`} className="font-medium text-ink hover:text-brand hover:underline">{o.nomor}</Link>
+                      <Link to={`/penjualan/${o.id}`} className="font-medium text-ink hover:text-brand-teks hover:underline">{o.nomor}</Link>
                     </Td>
                     <Td>{tanggal(o.tanggal)}</Td>
                     <Td kanan>{rupiah(o.total)}</Td>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { PackageCheck } from 'lucide-react';
 import { JudulHalaman } from '../components/layout/AppShell';
-import { Dialog, Galat, Kartu, Kosong, Lencana, Medan, Memuat, Pilihan, Tabel, Td, Th, Tombol } from '../components/ui/Dasar';
+import { Dialog, Galat, Kartu, Kosong, Lencana, Medan, Memuat, Pilihan, Tabel, Td, Th, Tombol, RangkaTabel } from '../components/ui/Dasar';
 import { useApi } from '../lib/useApi';
 import { api, GalatApi, kueri } from '../lib/api';
 import { angka, hariIniISO, rupiah, tanggal } from '../lib/format';
@@ -41,7 +41,7 @@ export default function PurchaseOrder() {
         {galat ? (
           <div className="p-4"><Galat pesan={galat} /></div>
         ) : memuat ? (
-          <Memuat />
+          <RangkaTabel />
         ) : (data ?? []).length === 0 ? (
           <Kosong pesan="Belum ada purchase order pada rentang ini." />
         ) : (
@@ -59,9 +59,9 @@ export default function PurchaseOrder() {
             </thead>
             <tbody>
               {data!.map((po) => (
-                <tr key={po.id} className="hover:bg-surface-2">
+                <tr key={po.id} className="transition-colors duration-150 hover:bg-surface-2">
                   <Td>
-                    <button onClick={() => setPoDibuka(po.id)} className="font-medium text-ink hover:text-brand hover:underline">
+                    <button onClick={() => setPoDibuka(po.id)} className="font-medium text-ink hover:text-brand-teks hover:underline">
                       {po.nomor}
                     </button>
                   </Td>
@@ -72,7 +72,7 @@ export default function PurchaseOrder() {
                   <Td><Lencana nada={NADA[po.status]}>{po.status}</Lencana></Td>
                   <Td>
                     {boleh('owner', 'admin', 'gudang') && po.status === 'dipesan' && (
-                      <button onClick={() => setPoDibuka(po.id)} className="text-[12px] font-medium text-brand hover:underline">
+                      <button onClick={() => setPoDibuka(po.id)} className="text-mini font-medium text-brand-teks hover:underline">
                         Terima barang
                       </button>
                     )}
@@ -136,10 +136,10 @@ function DialogPO({ id, tutup, selesai }: { id: number; tutup: () => void; seles
       }
     >
       {memuat || !data ? (
-        <Memuat />
+        <RangkaTabel />
       ) : (
         <>
-          <div className="mb-3 grid grid-cols-2 gap-3 text-[13px] sm:grid-cols-4">
+          <div className="mb-3 grid grid-cols-2 gap-3 text-kecil sm:grid-cols-4">
             {[
               ['Supplier', data.supplier],
               ['Tanggal', tanggal(data.tanggal)],
@@ -147,7 +147,7 @@ function DialogPO({ id, tutup, selesai }: { id: number; tutup: () => void; seles
               ['Total', rupiah(data.total)],
             ].map(([k, v]) => (
               <div key={k as string}>
-                <p className="text-[11.5px] text-ink-3">{k}</p>
+                <p className="text-mikro text-ink-3">{k}</p>
                 <p className="text-ink">{v as string}</p>
               </div>
             ))}
@@ -169,7 +169,7 @@ function DialogPO({ id, tutup, selesai }: { id: number; tutup: () => void; seles
                 <tr key={i.id}>
                   <Td>
                     <span className="text-ink">{i.nama}</span>
-                    <span className="block text-[11.5px] text-ink-3">{i.sku} · {i.satuan}</span>
+                    <span className="block text-mikro text-ink-3">{i.sku} · {i.satuan}</span>
                   </Td>
                   <Td kanan>{angka(i.qty)}</Td>
                   <Td kanan>{rupiah(i.harga)}</Td>
@@ -195,7 +195,7 @@ function DialogPO({ id, tutup, selesai }: { id: number; tutup: () => void; seles
           </Tabel>
 
           {bisaTerima && (
-            <p className="mt-3 text-[12px] text-ink-3">
+            <p className="mt-3 text-mini text-ink-3">
               Kosongkan kolom qty diterima bila jumlahnya sama dengan qty pesan. Stok bertambah sebesar yang benar-benar
               diterima, dan harga beli produk diperbarui ke harga pada dokumen ini.
             </p>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { JudulHalaman } from '../components/layout/AppShell';
-import { Galat, Kartu, Kosong, Lencana, Memuat, Pilihan, Tabel, Td, Th } from '../components/ui/Dasar';
+import { Galat, Kartu, Kosong, Lencana, Memuat, Pilihan, Tabel, Td, Th, RangkaTabel } from '../components/ui/Dasar';
 import { useApi } from '../lib/useApi';
 import { kueri } from '../lib/api';
 import { rupiah, waktu } from '../lib/format';
@@ -32,7 +32,7 @@ export default function Pengiriman() {
         {galat ? (
           <div className="p-4"><Galat pesan={galat} /></div>
         ) : memuat ? (
-          <Memuat />
+          <RangkaTabel />
         ) : (data ?? []).length === 0 ? (
           <Kosong pesan="Tidak ada tugas pengiriman dengan status ini." />
         ) : (
@@ -50,14 +50,14 @@ export default function Pengiriman() {
             </thead>
             <tbody>
               {data!.map((g) => (
-                <tr key={g.id} className="hover:bg-surface-2">
+                <tr key={g.id} className="transition-colors duration-150 hover:bg-surface-2">
                   <Td>
-                    <Link to={`/pengiriman/${g.id}`} className="font-medium text-ink hover:text-brand hover:underline">{g.nomor}</Link>
-                    <span className="block text-[11.5px] text-ink-3">{g.nomor_pesanan}</span>
+                    <Link to={`/pengiriman/${g.id}`} className="font-medium text-ink hover:text-brand-teks hover:underline">{g.nomor}</Link>
+                    <span className="block text-mikro text-ink-3">{g.nomor_pesanan}</span>
                   </Td>
                   <Td>
                     <span className="text-ink">{g.customer}</span>
-                    <span className="block max-w-[260px] truncate text-[11.5px] text-ink-3">{g.alamat ?? '—'}</span>
+                    <span className="block max-w-[260px] truncate text-mikro text-ink-3">{g.alamat ?? '—'}</span>
                   </Td>
                   <Td>{g.driver ?? '—'}</Td>
                   <Td kanan>{rupiah(g.total)}</Td>

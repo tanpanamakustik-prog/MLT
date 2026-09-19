@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Pencil, Plus, Search } from 'lucide-react';
 import { JudulHalaman } from '../components/layout/AppShell';
-import { Dialog, Galat, Kartu, Kosong, Lencana, Medan, Memuat, Pilihan, Tabel, Td, Th, Tombol } from '../components/ui/Dasar';
+import { Dialog, Galat, Kartu, Kosong, Lencana, Medan, Memuat, Pilihan, Tabel, Td, Th, Tombol, RangkaTabel } from '../components/ui/Dasar';
 import { useApi } from '../lib/useApi';
 import { api, GalatApi, kueri } from '../lib/api';
 import { angka, rupiah } from '../lib/format';
@@ -78,7 +78,7 @@ export default function Produk() {
             onChange={(e) => setCari(e.target.value)}
             placeholder="Cari nama atau SKU…"
             aria-label="Cari produk"
-            className="w-[240px] rounded-lg border border-line bg-surface py-2 pl-9 pr-3 text-[13px] text-ink placeholder:text-ink-3 focus:border-brand focus:outline-none"
+            className="w-[240px] rounded-lg border border-line bg-surface py-2 pl-9 pr-3 text-kecil text-ink placeholder:text-ink-3 focus:border-brand focus:outline-none"
           />
         </label>
         <Pilihan aria-label="Saring kategori" value={kategoriId} onChange={(e) => setKategoriId(e.target.value)} className="w-[170px]">
@@ -93,7 +93,7 @@ export default function Produk() {
         {galat ? (
           <div className="p-4"><Galat pesan={galat} /></div>
         ) : memuat ? (
-          <Memuat />
+          <RangkaTabel />
         ) : baris.length === 0 ? (
           <Kosong pesan="Tidak ada produk yang cocok dengan penyaring ini." />
         ) : (
@@ -112,10 +112,10 @@ export default function Produk() {
             </thead>
             <tbody>
               {baris.map((p) => (
-                <tr key={p.id} className="hover:bg-surface-2">
+                <tr key={p.id} className="transition-colors duration-150 hover:bg-surface-2">
                   <Td>
                     <span className="font-medium text-ink">{p.nama}</span>
-                    <span className="block text-[11.5px] text-ink-3">{p.sku} · {p.satuan}</span>
+                    <span className="block text-mikro text-ink-3">{p.sku} · {p.satuan}</span>
                   </Td>
                   <Td>{p.kategori ?? '—'}</Td>
                   <Td kanan>{rupiah(p.harga_beli)}</Td>
@@ -174,7 +174,7 @@ export default function Produk() {
             <Medan label="Safety stock" type="number" value={form.safety_stock} onChange={(e) => setForm({ ...form, safety_stock: Number(e.target.value) })} petunjuk="Cadangan dalam hitungan titik pesan." />
             <Medan label="Kelipatan pembelian" type="number" value={form.kelipatan_beli} onChange={(e) => setForm({ ...form, kelipatan_beli: Number(e.target.value) })} petunjuk="Saran kulakan dibulatkan ke kelipatan ini." />
             {!form.id && (
-              <p className="text-[12px] text-ink-3 sm:col-span-2">
+              <p className="text-mini text-ink-3 sm:col-span-2">
                 Stok awal tidak diisi di sini. Barang masuk lewat penerimaan kulakan atau stock opname, supaya setiap penambahan stok punya asal-usul.
               </p>
             )}

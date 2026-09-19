@@ -23,7 +23,11 @@ export function rupiahRingkas(n: number | null | undefined): string {
   return `${tanda}Rp${a}`;
 }
 
-export const angka = (n: number | null | undefined): string => Number(n ?? 0).toLocaleString('id-ID');
+/* Tanda minus matematis (U+2212), bukan tanda hubung. Keduanya bercampur dalam
+   satu kolom terbaca sebagai dua hal berbeda, dan tanda hubung lebih pendek
+   sehingga angka negatif tampak tidak sejajar pada kolom bertabular. */
+export const angka = (n: number | null | undefined): string =>
+  Number(n ?? 0).toLocaleString('id-ID').replace('-', '\u2212');
 
 export const persen = (n: number | null | undefined, digit = 1): string =>
   n == null ? '—' : `${Number(n).toFixed(digit).replace('.', ',')}%`;

@@ -1,15 +1,15 @@
 import { useState, type FormEvent } from 'react';
-import { Boxes } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Galat, Medan, Tombol } from '../components/ui/Dasar';
 import { GalatApi } from '../lib/api';
+import { LogoMLT, Mahkota } from '../components/common/LogoMLT';
 
-const AKUN_DEMO = [
-  { username: 'owner', peran: 'Owner — seluruh modul & laporan' },
-  { username: 'admin', peran: 'Admin — order, produk, customer' },
-  { username: 'gudang', peran: 'Gudang — stok, kulakan, pengiriman' },
-  { username: 'sales', peran: 'Sales — customer & pesanan' },
-  { username: 'driver', peran: 'Driver — pengiriman & absensi' },
+
+const CAKUPAN = [
+  'Penjualan dan stok yang selalu sejalan',
+  'Saran kulakan dari rata-rata penjualan',
+  'Pengiriman berjejak GPS dan bukti foto',
+  'Laporan harian sampai tahunan',
 ];
 
 export default function Login() {
@@ -33,20 +33,44 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-page px-4 py-10">
-      <div className="w-full max-w-sm">
-        <div className="mb-6 flex items-center gap-3">
-          <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand text-brand-ink">
-            <Boxes size={20} />
+    /* Dua kolom di layar lebar, menumpuk di ponsel. Panel kiri memakai lapisan
+       krom yang sama dengan bilah navigasi aplikasi, sehingga layar pertama
+       sudah memperkenalkan bahasa visual yang akan dipakai seterusnya. */
+    <div className="flex min-h-screen flex-col lg:flex-row">
+      <aside className="flex flex-col justify-between bg-krom px-6 py-8 sm:px-10 lg:w-[46%] lg:px-14 lg:py-12">
+        <div className="flex items-center gap-3">
+          <LogoMLT ukuran={44} className="shrink-0" />
+          <span>
+            <span className="block text-besar font-semibold leading-tight tracking-tight text-white">MLT</span>
+            <span className="block text-mini leading-tight text-krom-ink-2">Mas Lukman Telur</span>
           </span>
-          <div>
-            <h1 className="text-[18px] font-semibold tracking-tight text-ink">DistribusiHub</h1>
-            <p className="text-[12px] text-ink-2">Sistem manajemen distributor bahan pokok</p>
-          </div>
         </div>
 
-        <form onSubmit={kirim} className="rounded-xl border border-line bg-surface p-5">
-          <div className="flex flex-col gap-3">
+        <div className="hidden lg:block">
+          <p className="max-w-md text-[2rem] font-semibold leading-tight tracking-[-0.025em] text-white">
+            Barang masuk, stok, penjualan, pengiriman, dan untungnya — dalam satu catatan.
+          </p>
+          <ul className="mt-8 flex flex-col gap-3">
+            {CAKUPAN.map((c) => (
+              <li key={c} className="flex items-baseline gap-3 text-dasar text-krom-ink">
+                <Mahkota ukuran={13} className="shrink-0 translate-y-[2px] text-krom-aksen" />
+                {c}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <p className="mt-6 text-mini text-krom-ink-2 lg:mt-0">
+          Fresh &middot; Berkualitas &middot; Terpercaya
+        </p>
+      </aside>
+
+      <main className="flex flex-1 items-center justify-center bg-page px-4 py-10 sm:px-8">
+        <div className="w-full max-w-sm">
+          <h1 className="text-judul font-semibold tracking-[-0.02em] text-ink">Masuk</h1>
+          <p className="mt-1 text-kecil text-ink-2">Gunakan akun yang diberikan admin.</p>
+
+          <form onSubmit={kirim} className="mt-6 flex flex-col gap-4">
             <Medan
               label="Username"
               value={username}
@@ -64,32 +88,13 @@ export default function Login() {
               required
             />
             {galat && <Galat pesan={galat} />}
-            <Tombol varian="utama" type="submit" sibuk={sibuk} className="mt-1 w-full py-2.5">
+            <Tombol varian="utama" type="submit" sibuk={sibuk} className="h-10 w-full">
               Masuk
             </Tombol>
-          </div>
-        </form>
+          </form>
 
-        <div className="mt-4 rounded-xl border border-line bg-surface p-4">
-          <p className="mb-2 text-[12px] font-medium text-ink-2">Akun data contoh — kata sandi demo1234</p>
-          <ul className="flex flex-col gap-1">
-            {AKUN_DEMO.map((a) => (
-              <li key={a.username}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setUsername(a.username);
-                    setKataSandi('demo1234');
-                  }}
-                  className="w-full rounded-md px-2 py-1 text-left text-[12px] text-ink-2 hover:bg-surface-2"
-                >
-                  <span className="font-medium text-ink">{a.username}</span> — {a.peran}
-                </button>
-              </li>
-            ))}
-          </ul>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

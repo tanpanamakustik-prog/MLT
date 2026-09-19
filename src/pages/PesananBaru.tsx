@@ -109,7 +109,7 @@ export default function PesananBaru() {
                         ))}
                       </Pilihan>
                       {stokKurang && (
-                        <span className="mt-1 block text-[11.5px] text-critical">
+                        <span className="mt-1 block text-mikro text-critical-teks">
                           Stok tersedia hanya {angka(p.stok)} {p.satuan}.
                         </span>
                       )}
@@ -125,7 +125,7 @@ export default function PesananBaru() {
                       <button
                         onClick={() => setBaris((l) => l.filter((_, j) => j !== i))}
                         aria-label="Hapus baris"
-                        className="rounded-md p-1.5 text-ink-3 hover:bg-surface-2 hover:text-critical"
+                        className="rounded-md p-1.5 text-ink-3 hover:bg-surface-2 hover:text-critical-teks"
                       >
                         <Trash2 size={14} />
                       </button>
@@ -149,11 +149,11 @@ export default function PesananBaru() {
             <Medan label="Ongkir" type="number" value={ongkir} onChange={(e) => setOngkir(Number(e.target.value))} />
             <Medan label="Catatan" value={catatan} onChange={(e) => setCatatan(e.target.value)} />
 
-            <dl className="mt-1 flex flex-col gap-1.5 border-t border-line pt-3 text-[13px]">
+            <dl className="mt-1 flex flex-col gap-1.5 border-t border-line pt-3 text-kecil">
               <div className="flex justify-between"><dt className="text-ink-2">Subtotal</dt><dd className="angka text-ink">{rupiah(subtotal)}</dd></div>
-              <div className="flex justify-between"><dt className="text-ink-2">Diskon</dt><dd className="angka text-ink">−{rupiah(diskon)}</dd></div>
+              <div className="flex justify-between"><dt className="text-ink-2">Diskon</dt><dd className="angka text-ink">{diskon > 0 ? `−${rupiah(diskon)}` : rupiah(0)}</dd></div>
               <div className="flex justify-between"><dt className="text-ink-2">Ongkir</dt><dd className="angka text-ink">{rupiah(ongkir)}</dd></div>
-              <div className="flex justify-between border-t border-line pt-1.5 text-[15px] font-semibold">
+              <div className="flex justify-between border-t border-line pt-1.5 text-sedang font-semibold">
                 <dt>Total</dt><dd className="angka">{rupiah(total)}</dd>
               </div>
             </dl>

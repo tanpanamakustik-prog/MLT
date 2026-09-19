@@ -1,4 +1,4 @@
-const KUNCI_TOKEN = 'distribusihub.token';
+const KUNCI_TOKEN = 'mlt.token';
 
 export const ambilToken = () => localStorage.getItem(KUNCI_TOKEN);
 export const simpanToken = (t: string) => localStorage.setItem(KUNCI_TOKEN, t);

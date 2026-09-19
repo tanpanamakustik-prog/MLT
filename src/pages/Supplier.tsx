@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pencil, Plus } from 'lucide-react';
 import { JudulHalaman } from '../components/layout/AppShell';
-import { Dialog, Galat, Kartu, Kosong, Lencana, Medan, Memuat, Tabel, Td, Th, Tombol } from '../components/ui/Dasar';
+import { Dialog, Galat, Kartu, Kosong, Lencana, Medan, Memuat, Tabel, Td, Th, Tombol, RangkaTabel } from '../components/ui/Dasar';
 import { useApi } from '../lib/useApi';
 import { api, GalatApi } from '../lib/api';
 import { angka } from '../lib/format';
@@ -49,7 +49,7 @@ export default function Supplier() {
         {galat ? (
           <div className="p-4"><Galat pesan={galat} /></div>
         ) : memuat ? (
-          <Memuat />
+          <RangkaTabel />
         ) : (data ?? []).length === 0 ? (
           <Kosong pesan="Belum ada supplier." />
         ) : (
@@ -67,9 +67,9 @@ export default function Supplier() {
             </thead>
             <tbody>
               {data!.map((s) => (
-                <tr key={s.id} className="hover:bg-surface-2">
+                <tr key={s.id} className="transition-colors duration-150 hover:bg-surface-2">
                   <Td><span className="font-medium text-ink">{s.nama}</span></Td>
-                  <Td>{s.kontak ?? '—'}<span className="block text-[11.5px] text-ink-3">{s.no_hp ?? ''}</span></Td>
+                  <Td>{s.kontak ?? '—'}<span className="block text-mikro text-ink-3">{s.no_hp ?? ''}</span></Td>
                   <Td>{s.alamat ?? '—'}</Td>
                   <Td kanan>{s.lead_time_hari} hari</Td>
                   <Td kanan>{angka(s.jumlah_produk)}</Td>

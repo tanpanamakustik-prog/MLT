@@ -3,7 +3,7 @@ import { db } from '../db.js';
 import { wajibMasuk, wajibPeran } from '../auth.js';
 import { statusStok } from '../stok.js';
 import { hitungSaranKulakan } from '../kulakan-cerdas.js';
-import { hariIni, rentangPeriode } from '../util.js';
+import { hariIni, periodeSebelumnya, rentangPeriode } from '../util.js';
 import { bungkus } from '../http.js';
 
 export const rutLaporan = Router();
@@ -65,6 +65,30 @@ rutLaporan.get('/dashboard', (req, res) => {
   const jual = ringkasPenjualan(p.mulai, p.selesai);
   const beli = ringkasPembelian(p.mulai, p.selesai);
 
+  /* Angka tanpa pembanding tidak bisa dinilai. Rp731 juta bulan ini hanya
+     berarti sesuatu bila diketahui bulan lalu berapa, jadi periode sebelumnya
+     ikut dihitung dan selisihnya dikirim bersama angkanya.
+ 
+     Ketika periode yang diminta masih berjalan, pembandingnya dipotong pada
+     jumlah hari yang sama. Sembilan belas hari September dibanding tiga puluh
+     satu hari Agustus selalu menghasilkan penurunan besar, dan itu memberi
+     sinyal salah setiap kali bulan berjalan dibuka — yang berarti hampir
+     sepanjang waktu. */
+  const lalu = periodeSebelumnya(String(req.query.periode ?? 'harian'), p);
+  const masihBerjalan = p.selesai > hariIni();
+  if (masihBerjalan) {
+    const hariBerjalan =
+      Math.round((new Date(hariIni() + 'T00:00:00').getTime() - new Date(p.mulai + 'T00:00:00').getTime()) / 86400000) + 1;
+    const potong = new Date(lalu.mulai + 'T00:00:00');
+    potong.setDate(potong.getDate() + hariBerjalan - 1);
+    const batas = potong.toLocaleDateString('sv-SE');
+    if (batas < lalu.selesai) lalu.selesai = batas;
+  }
+
+  const jualLalu = ringkasPenjualan(lalu.mulai, lalu.selesai);
+  const beliLalu = ringkasPembelian(lalu.mulai, lalu.selesai);
+  const tumbuh = (a: number, b: number) => (b > 0 ? Math.round(((a - b) / b) * 1000) / 10 : null);
+
   const nilaiStok = (db.prepare('SELECT COALESCE(SUM(stok * harga_beli),0) AS n FROM produk WHERE aktif = 1').get() as any).n;
 
   /* Tren 14 hari terakhir, dihitung mundur dari akhir periode tetapi tidak
@@ -125,6 +149,20 @@ rutLaporan.get('/dashboard', (req, res) => {
 
   res.json({
     periode: p,
+    pembanding: {
+      ...lalu,
+      sebagian: masihBerjalan,
+      omzet: jualLalu.omzet,
+      laba_kotor: jualLalu.laba_kotor,
+      jumlah_order: jualLalu.jumlah_order,
+      nilai_pembelian: beliLalu.nilai_pembelian,
+    },
+    pertumbuhan: {
+      omzet: tumbuh(jual.omzet, jualLalu.omzet),
+      laba_kotor: tumbuh(jual.laba_kotor, jualLalu.laba_kotor),
+      jumlah_order: tumbuh(jual.jumlah_order, jualLalu.jumlah_order),
+      nilai_pembelian: tumbuh(beli.nilai_pembelian, beliLalu.nilai_pembelian),
+    },
     kpi: {
       ...jual,
       nilai_pembelian: beli.nilai_pembelian,

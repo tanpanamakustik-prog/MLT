@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Download } from 'lucide-react';
 import { JudulHalaman } from '../components/layout/AppShell';
-import { Galat, Kartu, Kosong, Lencana, Medan, Memuat, Tabel, Td, Th, Tombol } from '../components/ui/Dasar';
+import { Galat, Kartu, Kosong, Lencana, Medan, Memuat, Tabel, Td, Th, Tombol, RangkaTabel } from '../components/ui/Dasar';
 import { KartuKpi } from '../components/ui/Kpi';
 import { useApi } from '../lib/useApi';
 import { kueri } from '../lib/api';
@@ -57,7 +57,7 @@ export default function Absensi() {
         {galat ? (
           <div className="p-4"><Galat pesan={galat} /></div>
         ) : memuat ? (
-          <Memuat />
+          <RangkaTabel />
         ) : baris.length === 0 ? (
           <Kosong pesan="Belum ada catatan absensi pada rentang ini." />
         ) : (
@@ -75,11 +75,11 @@ export default function Absensi() {
             </thead>
             <tbody>
               {baris.map((a) => (
-                <tr key={a.id} className="hover:bg-surface-2">
+                <tr key={a.id} className="transition-colors duration-150 hover:bg-surface-2">
                   <Td>{tanggal(a.tanggal)}</Td>
                   <Td>
                     <span className="text-ink">{a.nama}</span>
-                    <span className="block text-[11.5px] text-ink-3">{a.jabatan}</span>
+                    <span className="block text-mikro text-ink-3">{a.jabatan}</span>
                   </Td>
                   <Td>{jam(a.jam_masuk)}</Td>
                   <Td>{jam(a.jam_pulang)}</Td>

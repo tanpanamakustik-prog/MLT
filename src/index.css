@@ -1,111 +1,227 @@
 @import 'tailwindcss';
 
 /**
- * Token warna ditulis sebagai custom property, lalu dirujuk oleh @theme.
+ * Sistem visual DistribusiHub.
  *
- * Tailwind memanggang nilai di @theme saat build, sehingga warna yang ditulis
- * langsung di sana tidak bisa berganti mengikuti tema. Lapisan var() ini yang
- * membuat satu kelas seperti bg-surface benar di terang maupun gelap.
+ * Token warna ditulis sebagai custom property lalu dirujuk @theme. Tailwind
+ * memanggang nilai di @theme saat build, sehingga warna yang ditulis langsung
+ * di sana tidak bisa berganti mengikuti tema; lapisan var() inilah yang membuat
+ * satu kelas seperti bg-surface benar di terang maupun gelap.
  *
- * Nilai deret data (--series-*) dan status diambil dari palet yang sudah diuji
- * keterbacaannya untuk buta warna pada kedua permukaan; jangan diganti satu per
- * satu tanpa menguji ulang pasangannya.
+ * Aksen indigo dipilih karena jarak hue-nya jauh dari keempat warna status
+ * (hijau, kuning, jingga, merah) dan dari ketiga warna deret grafik — sebuah
+ * tombol tidak boleh terbaca seperti peringatan, dan warna aksi tidak boleh
+ * disangka salah satu deret data. Nilai untuk latar tombol dan untuk teks
+ * dipisah: satu warna tidak bisa sekaligus memenuhi kontras teks putih di
+ * atasnya dan kontras dirinya sendiri terhadap permukaan.
  */
 :root {
   color-scheme: light;
-  --dh-page: #f5f6f8;
+
+  /* Netral dihangatkan sedikit ke arah kertas, bukan abu kebiruan, agar duduk
+     berdampingan dengan merah dan emas logo tanpa terlihat berbeda suhu. */
+  --dh-page: #f8f6f3;
   --dh-surface: #ffffff;
-  --dh-surface-2: #f2f4f7;
-  --dh-line: #e3e6ea;
-  --dh-ink: #0f1115;
-  --dh-ink-2: #4b5159;
-  --dh-ink-3: #838a93;
-  --dh-brand: #2a78d6;
+  --dh-surface-2: #f3f0eb;
+  --dh-surface-3: #ebe7e0;
+  --dh-line: #e6e1d9;
+  --dh-line-kuat: #d4cec3;
+
+  --dh-ink: #1a1815;
+  --dh-ink-2: #4e4a44;
+  --dh-ink-3: #6f6a62;
+
+  /* Merah bata logo. Dipakai untuk aksi utama, tautan, dan keadaan terpilih. */
+  --dh-brand: #a3121a;
+  --dh-brand-teks: #a3121a;
   --dh-brand-ink: #ffffff;
-  --dh-brand-soft: #e9f1fc;
+  --dh-brand-soft: #f9edec;
+  --dh-brand-line: #e8c4c2;
+
+  /* Emas logo. Tidak pernah menjadi teks di permukaan terang — pada putih
+     rasionya hanya 2:1. Tempatnya di atas krom merah tua, persis seperti di
+     logo, dan sebagai isian grafis. */
+  --dh-emas: #f5b324;
+
   --dh-series-1: #2a78d6;
   --dh-series-2: #eb6834;
   --dh-series-3: #1baf7a;
+
   --dh-good: #0ca30c;
+  --dh-good-teks: #067306;
   --dh-warn: #fab219;
+  --dh-warn-teks: #7a5200;
   --dh-serious: #ec835a;
   --dh-critical: #d03b3b;
-  --dh-grid: #e6e8ec;
-  --dh-rail: #101828;
-  --dh-rail-ink: #cdd5e0;
-  --dh-rail-ink-2: #8b97a8;
-  --dh-rail-active: #1c2a41;
+  --dh-critical-teks: #b02b2b;
+
+  --dh-grid: #edeae4;
+
+  /* Bilah atas memakai merah tua cincin logo dan tetap gelap di kedua tema:
+     kromnya jadi jangkar yang tidak berubah saat tema diganti. */
+  --dh-krom: #6e0f14;
+  --dh-krom-2: #85161c;
+  --dh-krom-ink: #f0d9da;
+  --dh-krom-ink-2: #cba3a5;
+  --dh-krom-line: #8b2026;
+  --dh-krom-aksen: #f5b324;
+  --dh-krom-isi: #f5b324;
+  --dh-krom-isi-ink: #3d0a0d;
+
+  /* Monogram membawa latarnya sendiri, jadi warnanya tidak ikut berganti tema.
+     Logo yang berubah rupa antara terang dan gelap berhenti menjadi tanda
+     pengenal. */
+  --dh-logo-ubin: #faf7f0;
+  --dh-logo-rim: #1a1815;
+  --dh-logo-m: #c4141c;
+  --dh-logo-l: #f5b324;
+  --dh-logo-t: #1a1815;
+
+  --dh-bayang: 0 1px 2px rgba(26, 24, 21, 0.05), 0 8px 24px -12px rgba(26, 24, 21, 0.2);
+  --dh-bayang-naik: 0 2px 4px rgba(26, 24, 21, 0.07), 0 16px 40px -16px rgba(26, 24, 21, 0.3);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     color-scheme: dark;
-    --dh-page: #0d0f12;
-    --dh-surface: #17191d;
-    --dh-surface-2: #1f2228;
-    --dh-line: #2a2e35;
-    --dh-ink: #f2f4f7;
-    --dh-ink-2: #b6bdc7;
-    --dh-ink-3: #838a93;
-    --dh-brand: #3987e5;
+    --dh-page: #0c0b0a;
+    --dh-surface: #141312;
+    --dh-surface-2: #1e1c1a;
+    --dh-surface-3: #262320;
+    --dh-line: #2e2b27;
+    --dh-line-kuat: #403b35;
+
+    --dh-ink: #f5f2ed;
+    --dh-ink-2: #bdb6ac;
+    --dh-ink-3: #8c867c;
+
+    /* Latar tombol memakai merah yang lebih pekat agar teks putih di atasnya
+       tetap lolos kontras; merah untuk teks memakai langkah yang lebih terang
+       agar dirinya sendiri terbaca di atas permukaan gelap. Satu nilai tidak
+       bisa memenuhi keduanya sekaligus. */
+    --dh-brand: #cc1a22;
+    --dh-brand-teks: #ef5f65;
     --dh-brand-ink: #ffffff;
-    --dh-brand-soft: #16273d;
+    --dh-brand-soft: #2a1414;
+    --dh-brand-line: #5c2526;
+
+    --dh-emas: #f5b324;
+
     --dh-series-1: #3987e5;
     --dh-series-2: #d95926;
     --dh-series-3: #199e70;
-    --dh-grid: #262a31;
-    --dh-rail: #101319;
-    --dh-rail-ink: #cdd5e0;
-    --dh-rail-ink-2: #7b8494;
-    --dh-rail-active: #1d222b;
+
+    --dh-good-teks: #2fbc2f;
+    --dh-warn-teks: #f0b53c;
+    --dh-critical-teks: #ef6a6a;
+
+    --dh-grid: #242120;
+
+    --dh-bayang: 0 1px 2px rgba(0, 0, 0, 0.45), 0 8px 24px -12px rgba(0, 0, 0, 0.75);
+    --dh-bayang-naik: 0 2px 4px rgba(0, 0, 0, 0.55), 0 16px 40px -16px rgba(0, 0, 0, 0.88);
   }
 }
 
 :root[data-theme='dark'] {
-  color-scheme: dark;
-  --dh-page: #0d0f12;
-  --dh-surface: #17191d;
-  --dh-surface-2: #1f2228;
-  --dh-line: #2a2e35;
-  --dh-ink: #f2f4f7;
-  --dh-ink-2: #b6bdc7;
-  --dh-ink-3: #838a93;
-  --dh-brand: #3987e5;
+color-scheme: dark;
+  --dh-page: #0c0b0a;
+  --dh-surface: #141312;
+  --dh-surface-2: #1e1c1a;
+  --dh-surface-3: #262320;
+  --dh-line: #2e2b27;
+  --dh-line-kuat: #403b35;
+
+  --dh-ink: #f5f2ed;
+  --dh-ink-2: #bdb6ac;
+  --dh-ink-3: #8c867c;
+
+  /* Latar tombol memakai merah yang lebih pekat agar teks putih di atasnya
+     tetap lolos kontras; merah untuk teks memakai langkah yang lebih terang
+     agar dirinya sendiri terbaca di atas permukaan gelap. Satu nilai tidak
+     bisa memenuhi keduanya sekaligus. */
+  --dh-brand: #cc1a22;
+  --dh-brand-teks: #ef5f65;
   --dh-brand-ink: #ffffff;
-  --dh-brand-soft: #16273d;
+  --dh-brand-soft: #2a1414;
+  --dh-brand-line: #5c2526;
+
+  --dh-emas: #f5b324;
+
   --dh-series-1: #3987e5;
   --dh-series-2: #d95926;
   --dh-series-3: #199e70;
-  --dh-grid: #262a31;
-  --dh-rail: #101319;
-  --dh-rail-ink: #cdd5e0;
-  --dh-rail-ink-2: #7b8494;
-  --dh-rail-active: #1d222b;
+
+  --dh-good-teks: #2fbc2f;
+  --dh-warn-teks: #f0b53c;
+  --dh-critical-teks: #ef6a6a;
+
+  --dh-grid: #242120;
+
+  --dh-bayang: 0 1px 2px rgba(0, 0, 0, 0.45), 0 8px 24px -12px rgba(0, 0, 0, 0.75);
+  --dh-bayang-naik: 0 2px 4px rgba(0, 0, 0, 0.55), 0 16px 40px -16px rgba(0, 0, 0, 0.88);
 }
 
 @theme inline {
   --color-page: var(--dh-page);
   --color-surface: var(--dh-surface);
   --color-surface-2: var(--dh-surface-2);
+  --color-surface-3: var(--dh-surface-3);
   --color-line: var(--dh-line);
+  --color-line-kuat: var(--dh-line-kuat);
   --color-ink: var(--dh-ink);
   --color-ink-2: var(--dh-ink-2);
   --color-ink-3: var(--dh-ink-3);
   --color-brand: var(--dh-brand);
+  --color-brand-teks: var(--dh-brand-teks);
   --color-brand-ink: var(--dh-brand-ink);
   --color-brand-soft: var(--dh-brand-soft);
+  --color-brand-line: var(--dh-brand-line);
   --color-series-1: var(--dh-series-1);
   --color-series-2: var(--dh-series-2);
   --color-series-3: var(--dh-series-3);
   --color-good: var(--dh-good);
+  --color-good-teks: var(--dh-good-teks);
   --color-warn: var(--dh-warn);
+  --color-warn-teks: var(--dh-warn-teks);
   --color-serious: var(--dh-serious);
   --color-critical: var(--dh-critical);
-  --color-rail: var(--dh-rail);
-  --color-rail-ink: var(--dh-rail-ink);
-  --color-rail-ink-2: var(--dh-rail-ink-2);
-  --color-rail-active: var(--dh-rail-active);
+  --color-critical-teks: var(--dh-critical-teks);
+  --color-krom: var(--dh-krom);
+  --color-krom-2: var(--dh-krom-2);
+  --color-krom-ink: var(--dh-krom-ink);
+  --color-krom-ink-2: var(--dh-krom-ink-2);
+  --color-krom-line: var(--dh-krom-line);
+  --color-krom-aksen: var(--dh-krom-aksen);
+  --color-krom-isi: var(--dh-krom-isi);
+  --color-krom-isi-ink: var(--dh-krom-isi-ink);
+  --color-emas: var(--dh-emas);
+
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  /* Skala tetap dengan rasio ~1.15. UI operasional dilihat pada DPI yang
+     konsisten; tipografi yang mengambang mengikuti lebar layar justru membuat
+     judul mengecil di panel sempit. */
+  --text-mikro: 0.6875rem;
+  --text-mikro--line-height: 1rem;
+  --text-mini: 0.75rem;
+  --text-mini--line-height: 1.125rem;
+  --text-kecil: 0.8125rem;
+  --text-kecil--line-height: 1.25rem;
+  --text-dasar: 0.875rem;
+  --text-dasar--line-height: 1.375rem;
+  --text-sedang: 0.9375rem;
+  --text-sedang--line-height: 1.375rem;
+  --text-besar: 1.125rem;
+  --text-besar--line-height: 1.5rem;
+  --text-judul: 1.375rem;
+  --text-judul--line-height: 1.75rem;
+  --text-angka: 1.75rem;
+  --text-angka--line-height: 2rem;
+  --text-utama: 2.75rem;
+  --text-utama--line-height: 3rem;
+
+  --shadow-kartu: var(--dh-bayang);
+  --shadow-naik: var(--dh-bayang-naik);
 }
 
 html,
@@ -119,28 +235,99 @@ body {
   background: var(--dh-page);
   color: var(--dh-ink);
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: 0.875rem;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-/* Kolom angka disejajarkan dengan angka bertabular; judul dan teks biasa tetap
-   memakai angka proporsional agar tidak terlihat renggang. */
+/**
+ * Permukaan bawaan peramban.
+ *
+ * Seleksi teks, kursor ketik, cincin fokus, dan batang gulir dikirim peramban
+ * dengan warnanya sendiri yang tidak milik sistem desain mana pun. Ini bagian
+ * yang paling sering ditinggalkan, dan justru yang membedakan tampilan yang
+ * dibangun dari yang sekadar dirakit.
+ */
+::selection {
+  background: color-mix(in srgb, var(--dh-brand) 22%, transparent);
+  color: var(--dh-ink);
+}
+
+input,
+textarea,
+select {
+  caret-color: var(--dh-brand-teks);
+}
+
+:focus-visible {
+  outline: 2px solid var(--dh-brand-teks);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--dh-line-kuat);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--dh-ink-3);
+  background-clip: content-box;
+}
+
+/* Angka bertabular hanya untuk kolom yang harus sejajar ke bawah; judul dan
+   teks biasa memakai angka proporsional agar tidak terlihat renggang. */
 .angka {
   font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
 }
 
-/* Recharts menggambar fokus keyboard-nya sendiri di elemen SVG; garis fokus
-   bawaan peramban di atasnya menghasilkan kotak ganda pada tiap titik data. */
+/* Angka besar dirapatkan: pada ukuran ini jarak bawaan terbaca melebar. */
+.angka-utama {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  font-weight: 640;
+}
+
 .recharts-wrapper:focus,
 .recharts-surface:focus {
   outline: none;
 }
 
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+/* Rangka muat: satu denyut halus, bukan pemintal di tengah konten. */
+@keyframes dh-denyut {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
 }
-::-webkit-scrollbar-thumb {
-  background: var(--dh-line);
+.rangka {
+  background: var(--dh-surface-2);
   border-radius: 6px;
+  animation: dh-denyut 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media print {
+  .cetak-sembunyi {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
 }

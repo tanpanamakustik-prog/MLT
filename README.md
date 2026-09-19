@@ -1,6 +1,6 @@
-# DistribusiHub
+# MLT
 
-Sistem manajemen distributor bahan pokok — web dashboard dan APK Android dari
+Sistem manajemen distributor untuk **MLT — Mas Lukman Telur** — web dashboard dan APK Android dari
 satu basis kode. Mencakup penjualan, inventory, kulakan, pengiriman, absensi,
 aktivitas karyawan, dan pelaporan harian sampai tahunan.
 
@@ -8,27 +8,47 @@ aktivitas karyawan, dan pelaporan harian sampai tahunan.
 
 ```bash
 npm install
-cp .env.example .env     # ganti JWT_SECRET sebelum dipakai di luar laptop
-npm run seed             # data contoh: 2 tahun transaksi, ~5.400 pesanan
-npm run dev              # http://localhost:4040
+cp .env.example .env         # ganti JWT_SECRET sebelum dipakai di luar laptop
+npm run reset -- --ya        # database kosong + satu akun owner
+npm run dev                  # http://localhost:3335
 ```
 
-Akun data contoh, kata sandi `demo1234`:
-
-| Username | Peran  | Akses |
-|----------|--------|-------|
-| `owner`  | Owner  | Seluruh modul, laporan, pengaturan |
-| `admin`  | Admin  | Order, produk, customer, laporan |
-| `gudang` | Gudang | Stok, opname, kulakan, pengiriman |
-| `sales`  | Sales  | Customer, pesanan, absensi |
-| `driver` | Driver | Pengiriman, absensi, aktivitas |
-| `buyer`  | Buyer  | Katalog dan pesanannya sendiri |
+`npm run reset` menampilkan kata sandi owner sekali saja. Untuk menentukan
+sendiri: `npm run reset -- --ya --username aji --sandi "..."`.
 
 Perintah lain: `npm run build` (produksi), `npm start` (jalankan hasil build),
 `npm run lint` (typecheck), `npm run android` (build + buka Android Studio).
 
-> `npm run seed` **menghapus seluruh isi database**. Jangan dijalankan pada
-> data sungguhan.
+## Mengisi sistem yang masih kosong
+
+1. Masuk sebagai owner, buka **Pengaturan**: nama usaha, titik dan radius
+   absensi, parameter saran kulakan.
+2. **Kulakan → Supplier**, lalu **Penjualan → Produk** (kategori dibuat lewat
+   API `POST /api/master/kategori`).
+3. **Karyawan → Data Karyawan**, lalu buatkan akunnya:
+
+   ```bash
+   npm run akun -- --daftar
+   npm run akun -- --username budi --nama "Budi Santoso" --peran gudang
+   npm run akun -- --username andi --nama "Andi" --peran driver --karyawan-id 3
+   npm run akun -- --username budi --sandi "baru"        # ganti kata sandi
+   npm run akun -- --username budi --nonaktif
+   ```
+
+   Peran `gudang`, `sales`, dan `driver` perlu `--karyawan-id` agar bisa memakai
+   absensi dan aktivitas; peran `buyer` perlu `--customer-id`.
+4. Stok awal masuk lewat **penerimaan kulakan** atau **stock opname** — tidak
+   ada kolom stok awal di form produk, supaya setiap penambahan stok punya
+   asal-usul yang bisa ditelusuri.
+
+## Data contoh untuk pengembangan
+
+`npm run seed` mengisi database dengan dua tahun transaksi buatan (~5.400
+pesanan, enam akun peran dengan kata sandi `demo1234`) agar modul laporan bisa
+dinilai tanpa menunggu data sungguhan terkumpul.
+
+> `npm run seed` dan `npm run reset` sama-sama **menghapus seluruh isi
+> database**. Jangan dijalankan pada data sungguhan.
 
 ## Susunan
 
@@ -129,5 +149,6 @@ adalah sumber tunggal untuk keduanya.
 - Faktur/invoice sebagai dokumen tersendiri; saat ini rincian pesanan dicetak
 - Pembayaran bertahap: `status_bayar` menyimpan tahap, bukan riwayat cicilan
 - Tanda tangan penerima: kolom `ttd_url` sudah ada, layar tanda tangannya belum
-- Manajemen akun pengguna lewat antarmuka; akun masih dibuat lewat skrip seed
+- Manajemen akun pengguna lewat antarmuka; akun masih dibuat lewat `npm run akun`
+- Form kategori produk di antarmuka; masih lewat API
 - Phase 4 PRD: forecasting, deteksi anomali

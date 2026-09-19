@@ -65,7 +65,7 @@ export default function LaporanKulakan() {
         <Kartu><Kosong pesan="Belum ada pembelian pada periode ini." /></Kartu>
       ) : (
         <Kartu>
-          <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-4 py-2.5 text-[12.5px]">
+          <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-4 py-2.5 text-mini">
             <span className="text-ink-2">{angka(baris.length)} produk dibeli</span>
             <span className="text-ink-2">Total pembelian <span className="angka font-semibold text-ink">{rupiah(total)}</span></span>
           </div>
@@ -87,10 +87,10 @@ export default function LaporanKulakan() {
               {baris.map((b: any) => {
                 const nilai = nilaiKeseimbangan(b.qty_diterima, b.qty_terjual);
                 return (
-                  <tr key={b.id} className="hover:bg-surface-2">
+                  <tr key={b.id} className="transition-colors duration-150 hover:bg-surface-2">
                     <Td>
                       <span className="font-medium text-ink">{b.nama}</span>
-                      <span className="block text-[11.5px] text-ink-3">{b.sku}</span>
+                      <span className="block text-mikro text-ink-3">{b.sku}</span>
                     </Td>
                     <Td kanan>{angka(b.qty_dipesan)}</Td>
                     <Td kanan>{angka(b.qty_diterima)}</Td>

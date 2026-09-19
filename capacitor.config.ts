@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.distribusihub.app',
-  appName: 'DistribusiHub',
+  appId: 'com.mlt.app',
+  appName: 'MLT',
   webDir: 'dist',
   server: {
     /* Skema http diperlukan agar WebView Android memperlakukan halaman sebagai

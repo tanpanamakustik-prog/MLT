@@ -29,7 +29,7 @@ function Keterangan({ deret }: { deret: Deret[] }) {
   return (
     <div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1">
       {deret.map((d, i) => (
-        <span key={d.kunci} className="inline-flex items-center gap-1.5 text-[12px] text-ink-2">
+        <span key={d.kunci} className="inline-flex items-center gap-1.5 text-mini text-ink-2">
           <span className="h-2.5 w-2.5 rounded-sm" style={{ background: WARNA[i % WARNA.length] }} />
           {d.label}
         </span>
@@ -42,9 +42,9 @@ function IsiTooltip({ active, payload, label, formatNilai }: any) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-lg border border-line bg-surface px-3 py-2 shadow-lg">
-      <p className="mb-1 text-[11px] font-medium text-ink-3">{label}</p>
+      <p className="mb-1 text-mikro font-medium text-ink-3">{label}</p>
       {payload.map((p: any) => (
-        <p key={p.dataKey} className="flex items-center gap-2 text-[12px] text-ink">
+        <p key={p.dataKey} className="flex items-center gap-2 text-mini text-ink">
           <span className="h-2 w-2 rounded-sm" style={{ background: p.color }} />
           <span className="text-ink-2">{p.name}</span>
           <span className="ml-auto angka font-medium">{formatNilai(p.value)}</span>

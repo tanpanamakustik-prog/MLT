@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pencil, Plus } from 'lucide-react';
 import { JudulHalaman } from '../components/layout/AppShell';
-import { Dialog, Galat, Kartu, Kosong, Lencana, Medan, Memuat, Pilihan, Tabel, Td, Th, Tombol } from '../components/ui/Dasar';
+import { Dialog, Galat, Kartu, Kosong, Lencana, Medan, Memuat, Pilihan, Tabel, Td, Th, Tombol, RangkaTabel } from '../components/ui/Dasar';
 import { useApi } from '../lib/useApi';
 import { api, GalatApi } from '../lib/api';
 import { tanggal } from '../lib/format';
@@ -48,7 +48,7 @@ export default function Karyawan() {
         {galat ? (
           <div className="p-4"><Galat pesan={galat} /></div>
         ) : memuat ? (
-          <Memuat />
+          <RangkaTabel />
         ) : (data ?? []).length === 0 ? (
           <Kosong pesan="Belum ada data karyawan." />
         ) : (
@@ -66,7 +66,7 @@ export default function Karyawan() {
             </thead>
             <tbody>
               {data!.map((k) => (
-                <tr key={k.id} className="hover:bg-surface-2">
+                <tr key={k.id} className="transition-colors duration-150 hover:bg-surface-2">
                   <Td><span className="font-medium text-ink">{k.nama}</span></Td>
                   <Td>{k.jabatan}</Td>
                   <Td>{k.area_kerja ?? '—'}</Td>

@@ -52,7 +52,7 @@ export default function LaporanProduk() {
       ) : (
         <div className="grid gap-4 lg:grid-cols-3">
           <Kartu className="h-fit px-4 py-4">
-            <p className="mb-3 text-[13px] font-semibold text-ink">Sepuluh penyumbang omzet terbesar</p>
+            <p className="mb-3 text-kecil font-semibold text-ink">Sepuluh penyumbang omzet terbesar</p>
             <PeringkatBatang
               baris={baris.slice(0, 10).map((b: any) => ({
                 label: b.nama,
@@ -79,10 +79,10 @@ export default function LaporanProduk() {
               </thead>
               <tbody>
                 {baris.map((b: any) => (
-                  <tr key={b.id} className="hover:bg-surface-2">
+                  <tr key={b.id} className="transition-colors duration-150 hover:bg-surface-2">
                     <Td>
                       <span className="font-medium text-ink">{b.nama}</span>
-                      <span className="block text-[11.5px] text-ink-3">{b.sku}</span>
+                      <span className="block text-mikro text-ink-3">{b.sku}</span>
                     </Td>
                     <Td>{b.kategori ?? '—'}</Td>
                     <Td kanan>{angka(b.qty)}</Td>

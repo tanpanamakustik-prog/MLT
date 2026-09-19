@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { JudulHalaman } from '../components/layout/AppShell';
-import { Galat, Kartu, Kosong, Medan, Memuat, Pilihan, Tabel, Td, Th } from '../components/ui/Dasar';
+import { Galat, Kartu, Kosong, Medan, Memuat, Pilihan, Tabel, Td, Th, RangkaTabel } from '../components/ui/Dasar';
 import { useApi } from '../lib/useApi';
 import { kueri } from '../lib/api';
 import { hariIniISO, waktu } from '../lib/format';
@@ -52,7 +52,7 @@ export default function Aktivitas() {
         {galat ? (
           <div className="p-4"><Galat pesan={galat} /></div>
         ) : memuat ? (
-          <Memuat />
+          <RangkaTabel />
         ) : (data ?? []).length === 0 ? (
           <Kosong pesan="Belum ada aktivitas pada rentang ini." />
         ) : (
@@ -69,15 +69,15 @@ export default function Aktivitas() {
             </thead>
             <tbody>
               {data!.map((a) => (
-                <tr key={a.id} className="hover:bg-surface-2">
+                <tr key={a.id} className="transition-colors duration-150 hover:bg-surface-2">
                   <Td>{waktu(a.waktu)}</Td>
                   <Td>
                     <span className="text-ink">{a.nama}</span>
-                    <span className="block text-[11.5px] text-ink-3">{a.jabatan}</span>
+                    <span className="block text-mikro text-ink-3">{a.jabatan}</span>
                   </Td>
                   <Td>{namaAktivitas(a.jenis)}</Td>
                   <Td>{a.nomor_pesanan ?? '—'}</Td>
-                  <Td className="angka text-[12px] text-ink-2">
+                  <Td className="angka text-mini text-ink-2">
                     {a.lat != null ? `${a.lat.toFixed(5)}, ${a.lng.toFixed(5)}` : '—'}
                   </Td>
                   <Td>

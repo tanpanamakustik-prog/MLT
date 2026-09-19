@@ -95,3 +95,38 @@ export function rentangPeriode(
       return { mulai: acuan, selesai: acuan, label: new Date(acuan + 'T00:00:00').toLocaleDateString('id-ID', { dateStyle: 'long' }) };
   }
 }
+
+/**
+ * Periode pembanding: satu satuan penuh sebelum periode yang diminta.
+ *
+ * Dihitung dengan mundur satu hari dari tanggal mulai lalu menjalankan ulang
+ * rentangPeriode dari sana. Cara ini benar untuk bulan yang panjangnya berbeda
+ * dan untuk tahun kabisat, sementara "mundur 30 hari" tidak — Februari
+ * dibanding Januari akan meleset dan angkanya tampak turun tanpa sebab.
+ *
+ * Periode kustom digeser sejauh panjangnya sendiri, karena tidak ada satuan
+ * alami yang bisa dipakai.
+ */
+export function periodeSebelumnya(
+  periode: string,
+  p: { mulai: string; selesai: string }
+): { mulai: string; selesai: string; label: string } {
+  const hari = (t: string, n: number) => {
+    const d = new Date(t + 'T00:00:00');
+    d.setDate(d.getDate() + n);
+    return d.toLocaleDateString('sv-SE');
+  };
+
+  if (periode === 'kustom') {
+    const panjang =
+      Math.round(
+        (new Date(p.selesai + 'T00:00:00').getTime() - new Date(p.mulai + 'T00:00:00').getTime()) / 86400000
+      ) + 1;
+    const mulai = hari(p.mulai, -panjang);
+    const selesai = hari(p.mulai, -1);
+    return { mulai, selesai, label: `${panjang} hari sebelumnya` };
+  }
+
+  const r = rentangPeriode(periode, hari(p.mulai, -1));
+  return { mulai: r.mulai, selesai: r.selesai, label: r.label };
+}

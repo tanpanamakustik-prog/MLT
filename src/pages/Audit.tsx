@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { JudulHalaman } from '../components/layout/AppShell';
-import { Galat, Kartu, Kosong, Lencana, Medan, Memuat, Pilihan, Tabel, Td, Th } from '../components/ui/Dasar';
+import { Galat, Kartu, Kosong, Lencana, Medan, Memuat, Pilihan, Tabel, Td, Th, RangkaTabel } from '../components/ui/Dasar';
 import { useApi } from '../lib/useApi';
 import { kueri } from '../lib/api';
 import { hariIniISO, waktu } from '../lib/format';
@@ -48,7 +48,7 @@ export default function Audit() {
         {galat ? (
           <div className="p-4"><Galat pesan={galat} /></div>
         ) : memuat ? (
-          <Memuat />
+          <RangkaTabel />
         ) : (data ?? []).length === 0 ? (
           <Kosong pesan="Tidak ada catatan audit pada rentang ini." />
         ) : (
@@ -64,7 +64,7 @@ export default function Audit() {
             </thead>
             <tbody>
               {data!.map((a) => (
-                <tr key={a.id} className="hover:bg-surface-2">
+                <tr key={a.id} className="transition-colors duration-150 hover:bg-surface-2">
                   <Td>{waktu(a.waktu)}</Td>
                   <Td>{a.nama_user ?? 'sistem'}</Td>
                   <Td><Lencana nada={NADA_AKSI[a.aksi] ?? 'netral'}>{a.aksi}</Lencana></Td>

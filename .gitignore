@@ -7,3 +7,10 @@ uploads
 .DS_Store
 android/app/build
 android/.gradle
+
+# Skill impeccable dipasang ulang dari skills-lock.json; isinya 2 MB dan bukan kode project.
+.agents/
+
+# Konfigurasi IDE lokal.
+.idea/
+.vscode/

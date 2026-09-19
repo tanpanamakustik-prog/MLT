@@ -76,7 +76,7 @@ export default function PengirimanDetail() {
 
   return (
     <>
-      <Link to="/pengiriman" className="mb-3 inline-flex items-center gap-1.5 text-[13px] text-ink-2 hover:text-ink">
+      <Link to="/pengiriman" className="mb-3 inline-flex items-center gap-1.5 text-kecil text-ink-2 hover:text-ink">
         <ArrowLeft size={14} /> Kembali ke daftar pengiriman
       </Link>
 
@@ -107,7 +107,7 @@ export default function PengirimanDetail() {
               ))}
             </tbody>
           </Tabel>
-          <div className="flex justify-between border-t border-line px-4 py-3 text-[15px] font-semibold">
+          <div className="flex justify-between border-t border-line px-4 py-3 text-sedang font-semibold">
             <span>Total</span>
             <span className="angka">{rupiah(data.total)}</span>
           </div>
@@ -116,7 +116,7 @@ export default function PengirimanDetail() {
         <div className="flex flex-col gap-4">
           <Kartu>
             <KepalaKartu judul="Tujuan" />
-            <dl className="flex flex-col gap-2 px-4 py-4 text-[13px]">
+            <dl className="flex flex-col gap-2 px-4 py-4 text-kecil">
               <div className="flex justify-between gap-3"><dt className="text-ink-3">Customer</dt><dd className="text-right text-ink">{data.customer}</dd></div>
               <div className="flex justify-between gap-3"><dt className="text-ink-3">Alamat</dt><dd className="text-right text-ink">{data.alamat ?? '—'}</dd></div>
               <div className="flex justify-between gap-3"><dt className="text-ink-3">Nomor HP</dt><dd className="text-right text-ink">{data.no_hp ?? '—'}</dd></div>
@@ -127,7 +127,7 @@ export default function PengirimanDetail() {
             </dl>
             {data.foto_url && (
               <div className="px-4 pb-4">
-                <p className="mb-1.5 text-[12px] font-medium text-ink-2">Bukti penerimaan</p>
+                <p className="mb-1.5 text-mini font-medium text-ink-2">Bukti penerimaan</p>
                 <img src={data.foto_url} alt="Bukti penerimaan" className="w-full rounded-lg border border-line" />
               </div>
             )}
@@ -168,8 +168,8 @@ export default function PengirimanDetail() {
                   <li key={t.id} className="flex gap-3">
                     <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand" />
                     <span className="min-w-0">
-                      <span className="block text-[13px] text-ink">{JUDUL_LANGKAH[t.jenis.replace('pengiriman:', '')] ?? t.jenis}</span>
-                      <span className="block text-[11.5px] text-ink-3">
+                      <span className="block text-kecil text-ink">{JUDUL_LANGKAH[t.jenis.replace('pengiriman:', '')] ?? t.jenis}</span>
+                      <span className="block text-mikro text-ink-3">
                         {waktu(t.waktu)}
                         {t.lat != null && ` · ${t.lat.toFixed(5)}, ${t.lng.toFixed(5)}`}
                       </span>

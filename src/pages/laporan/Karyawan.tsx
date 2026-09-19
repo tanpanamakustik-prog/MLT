@@ -67,13 +67,13 @@ export default function LaporanKaryawan() {
             </thead>
             <tbody>
               {baris.map((b: any) => (
-                <tr key={b.id} className="hover:bg-surface-2">
+                <tr key={b.id} className="transition-colors duration-150 hover:bg-surface-2">
                   <Td>
                     <span className="font-medium text-ink">{b.nama}</span>
-                    <span className="block text-[11.5px] text-ink-3">{b.jabatan}</span>
+                    <span className="block text-mikro text-ink-3">{b.jabatan}</span>
                   </Td>
                   <Td kanan>{angka(b.hadir)}</Td>
-                  <Td kanan className={b.terlambat > 0 ? 'text-critical' : undefined}>{angka(b.terlambat)}</Td>
+                  <Td kanan className={b.terlambat > 0 ? 'text-critical-teks' : undefined}>{angka(b.terlambat)}</Td>
                   <Td kanan>{angka(b.aktivitas)}</Td>
                   <Td kanan>{angka(b.delivery)}</Td>
                   <Td kanan>{angka(b.delivery_selesai)}</Td>
@@ -85,7 +85,7 @@ export default function LaporanKaryawan() {
               ))}
             </tbody>
           </Tabel>
-          <p className="border-t border-line px-4 py-2.5 text-[12px] text-ink-3">
+          <p className="border-t border-line px-4 py-2.5 text-mini text-ink-3">
             Kolom delivery hanya terisi untuk driver, kolom order dan omzet hanya untuk sales yang menjadi penanggung
             jawab customer.
           </p>

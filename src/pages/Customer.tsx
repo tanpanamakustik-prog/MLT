@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Pencil, Plus, Search } from 'lucide-react';
 import { JudulHalaman } from '../components/layout/AppShell';
-import { Dialog, Galat, Kartu, Kosong, Lencana, Medan, Memuat, Pilihan, Tabel, Td, Th, Tombol } from '../components/ui/Dasar';
+import { Dialog, Galat, Kartu, Kosong, Lencana, Medan, Memuat, Pilihan, Tabel, Td, Th, Tombol, RangkaTabel } from '../components/ui/Dasar';
 import { useApi } from '../lib/useApi';
 import { api, GalatApi, kueri } from '../lib/api';
 import { angka, rupiah, tanggal } from '../lib/format';
@@ -57,7 +57,7 @@ export default function Customer() {
           onChange={(e) => setCari(e.target.value)}
           placeholder="Cari nama atau kode…"
           aria-label="Cari customer"
-          className="w-full rounded-lg border border-line bg-surface py-2 pl-9 pr-3 text-[13px] text-ink placeholder:text-ink-3 focus:border-brand focus:outline-none"
+          className="w-full rounded-lg border border-line bg-surface py-2 pl-9 pr-3 text-kecil text-ink placeholder:text-ink-3 focus:border-brand focus:outline-none"
         />
       </label>
 
@@ -65,7 +65,7 @@ export default function Customer() {
         {galat ? (
           <div className="p-4"><Galat pesan={galat} /></div>
         ) : memuat ? (
-          <Memuat />
+          <RangkaTabel />
         ) : (data ?? []).length === 0 ? (
           <Kosong pesan="Belum ada customer yang cocok." />
         ) : (
@@ -84,12 +84,12 @@ export default function Customer() {
             </thead>
             <tbody>
               {(data ?? []).map((c) => (
-                <tr key={c.id} className="hover:bg-surface-2">
+                <tr key={c.id} className="transition-colors duration-150 hover:bg-surface-2">
                   <Td>
-                    <Link to={`/customer/${c.id}`} className="font-medium text-ink hover:text-brand hover:underline">
+                    <Link to={`/customer/${c.id}`} className="font-medium text-ink hover:text-brand-teks hover:underline">
                       {c.nama}
                     </Link>
-                    <span className="block text-[11.5px] text-ink-3">{c.kode ?? '—'} · {c.no_hp ?? 'tanpa nomor'}</span>
+                    <span className="block text-mikro text-ink-3">{c.kode ?? '—'} · {c.no_hp ?? 'tanpa nomor'}</span>
                   </Td>
                   <Td><Lencana nada={c.status === 'aktif' ? 'netral' : 'kritis'}>{c.tipe}</Lencana></Td>
                   <Td>{c.sales ?? '—'}</Td>

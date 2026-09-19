@@ -1,5 +1,5 @@
 /**
- * Data contoh DistribusiHub.
+ * Data contoh MLT.
  *
  * Menghasilkan riwayat dua tahun berjalan supaya laporan bulanan, semester,
  * tahunan, dan perbandingan year-over-year punya isi sejak pertama dibuka —
@@ -165,7 +165,7 @@ simpanPengaturan('absensi_radius_m', process.env.ABSENSI_RADIUS_M ?? '150');
 simpanPengaturan('absensi_jam_masuk', '08:00:00');
 simpanPengaturan('kulakan_hari_riwayat', '30');
 simpanPengaturan('kulakan_hari_cakupan', '7');
-simpanPengaturan('nama_usaha', 'DistribusiHub — Distributor Bahan Pokok');
+simpanPengaturan('nama_usaha', 'MLT — Mas Lukman Telur');
 
 /* ------------------------------------------------------------- Transaksi */
 

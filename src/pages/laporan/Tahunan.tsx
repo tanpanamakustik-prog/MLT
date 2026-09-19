@@ -10,12 +10,12 @@ import { eksporExcel } from '../../components/common/ekspor';
 
 /** Panah arah menyertai angka pertumbuhan agar tandanya tidak hanya lewat warna. */
 function Pertumbuhan({ nilai }: { nilai: number | null }) {
-  if (nilai == null) return <span className="text-[12px] text-ink-3">tidak ada pembanding</span>;
+  if (nilai == null) return <span className="text-mini text-ink-3">tidak ada pembanding</span>;
   const naik = nilai > 0;
   const datar = nilai === 0;
   const Ikon = datar ? Minus : naik ? ArrowUpRight : ArrowDownRight;
   return (
-    <span className={`inline-flex items-center gap-1 text-[12px] font-medium ${datar ? 'text-ink-2' : naik ? 'text-good' : 'text-critical'}`}>
+    <span className={`inline-flex items-center gap-1 text-mini font-medium ${datar ? 'text-ink-2' : naik ? 'text-good-teks' : 'text-critical-teks'}`}>
       <Ikon size={13} />
       {nilai > 0 ? '+' : ''}
       {persen(nilai)}
@@ -147,7 +147,7 @@ export default function LaporanTahunan() {
                  hanya sebagai pembanding antar bulan. */
               const margin = b.omzet > 0 ? (b.laba_kotor / b.omzet) * 100 : 0;
               return (
-                <tr key={b.bulan} className="hover:bg-surface-2">
+                <tr key={b.bulan} className="transition-colors duration-150 hover:bg-surface-2">
                   <Td>{b.bulan}</Td>
                   <Td kanan>{angka(b.jumlah_order)}</Td>
                   <Td kanan>{rupiah(b.omzet)}</Td>
