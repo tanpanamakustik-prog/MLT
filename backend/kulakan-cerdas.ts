@@ -36,33 +36,39 @@ export interface SaranKulakan {
  * pembelian diarahkan ke target_stok, yaitu titik pesan ditambah cakupan
  * penjualan beberapa hari, supaya setelah barang datang stoknya benar-benar
  * berada di atas ambang. Lama cakupan dapat diubah owner lewat pengaturan.
+ *
+ * Penjualan tiap produk dihitung lewat satu agregat bergabung, bukan subkueri
+ * berkorelasi per baris: yang kedua menjalankan satu kueri untuk tiap produk
+ * dan biayanya tumbuh seiring katalog bertambah.
  */
-export function hitungSaranKulakan(opsi?: { hanyaPerlu?: boolean; hariRiwayat?: number }): SaranKulakan[] {
-  const hariRiwayat = opsi?.hariRiwayat ?? Number(ambilPengaturan('kulakan_hari_riwayat', '30'));
-  const hariCakupan = Number(ambilPengaturan('kulakan_hari_cakupan', '7'));
+export async function hitungSaranKulakan(opsi?: { hanyaPerlu?: boolean; hariRiwayat?: number }): Promise<SaranKulakan[]> {
+  const hariRiwayat = opsi?.hariRiwayat ?? Number(await ambilPengaturan('kulakan_hari_riwayat', '30'));
+  const hariCakupan = Number(await ambilPengaturan('kulakan_hari_cakupan', '7'));
 
-  const baris = db
-    .prepare(
-      `SELECT
-         p.id, p.sku, p.nama, p.satuan, p.stok, p.stok_minimum, p.safety_stock,
-         p.kelipatan_beli, p.harga_beli, p.supplier_id,
-         s.nama AS supplier, COALESCE(s.lead_time_hari, 3) AS lead_time_hari,
-         COALESCE((
-           SELECT SUM(pi.qty) FROM pesanan_item pi
-           JOIN pesanan o ON o.id = pi.pesanan_id
-           WHERE pi.produk_id = p.id
-             AND o.status_kirim <> 'batal'
-             AND o.tanggal >= date('now','localtime',?)
-         ), 0) AS qty_terjual
-       FROM produk p
-       LEFT JOIN supplier s ON s.id = p.supplier_id
-       WHERE p.aktif = 1
-       ORDER BY p.nama`
-    )
-    .all(`-${hariRiwayat} days`) as any[];
+  const baris = await db.banyak<any>(
+    `WITH terjual AS (
+       SELECT i.produk_id, SUM(i.qty)::bigint AS qty
+       FROM pesanan_item i
+       JOIN pesanan o ON o.id = i.pesanan_id
+       WHERE o.status_kirim <> 'batal'
+         AND o.tanggal >= current_date - ($1::int * INTERVAL '1 day')
+       GROUP BY i.produk_id
+     )
+     SELECT
+       p.id, p.sku, p.nama, p.satuan, p.stok, p.stok_minimum, p.safety_stock,
+       p.kelipatan_beli, p.harga_beli, p.supplier_id,
+       s.nama AS supplier, COALESCE(s.lead_time_hari, 3) AS lead_time_hari,
+       COALESCE(t.qty, 0) AS qty_terjual
+     FROM produk p
+     LEFT JOIN supplier s ON s.id = p.supplier_id
+     LEFT JOIN terjual t ON t.produk_id = p.id
+     WHERE p.aktif = true
+     ORDER BY p.nama`,
+    [hariRiwayat]
+  );
 
   const hasil = baris.map((r): SaranKulakan => {
-    const avg = r.qty_terjual / hariRiwayat;
+    const avg = Number(r.qty_terjual) / hariRiwayat;
     /* Produk yang belum punya safety stock sendiri memakai stok minimumnya —
        angka itu sudah merupakan penilaian manusia atas batas aman produk ini. */
     const safety = r.safety_stock > 0 ? r.safety_stock : r.stok_minimum;
@@ -85,7 +91,7 @@ export function hitungSaranKulakan(opsi?: { hanyaPerlu?: boolean; hariRiwayat?: 
       reorder_point: reorderPoint,
       target_stok: target,
       saran_qty: saran,
-      perkiraan_biaya: saran * r.harga_beli,
+      perkiraan_biaya: saran * Number(r.harga_beli),
       /* Produk tanpa penjualan sama sekali tidak punya "hari tersisa" yang
          bermakna; null dibedakan dari nol agar tampilan bisa menuliskannya
          sebagai tidak bergerak, bukan sebagai habis hari ini. */

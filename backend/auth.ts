@@ -44,29 +44,37 @@ export function hashSandi(sandi: string): string {
   return bcrypt.hashSync(sandi, 10);
 }
 
-function ambilPengguna(id: number): Pengguna | undefined {
-  return db
-    .prepare('SELECT id, username, nama, peran, karyawan_id, customer_id FROM pengguna WHERE id = ? AND aktif = 1')
-    .get(id) as Pengguna | undefined;
-}
-
 export function wajibMasuk(req: Request, res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) {
     return res.status(401).json({ pesan: 'Sesi tidak ditemukan. Silakan masuk kembali.' });
   }
+
+  let sub: number;
   try {
-    const isi = jwt.verify(header.slice(7), RAHASIA!) as unknown as { sub: number };
-    /* Pengguna dibaca ulang dari database tiap permintaan, bukan diambil dari
-       isi token. Peran yang dicabut atau akun yang dinonaktifkan harus langsung
-       berlaku, tidak menunggu token kedaluwarsa 12 jam. */
-    const pengguna = ambilPengguna(isi.sub);
-    if (!pengguna) return res.status(401).json({ pesan: 'Akun tidak aktif.' });
-    req.pengguna = pengguna;
-    next();
+    sub = (jwt.verify(header.slice(7), RAHASIA!) as unknown as { sub: number }).sub;
   } catch {
     return res.status(401).json({ pesan: 'Sesi berakhir. Silakan masuk kembali.' });
   }
+
+  /* Pengguna dibaca ulang dari database tiap permintaan, bukan diambil dari isi
+     token: peran yang dicabut atau akun yang dinonaktifkan harus langsung
+     berlaku, tidak menunggu token kedaluwarsa dua belas jam.
+
+     Hanya enam kolom yang diambil, bukan SELECT *. Kueri ini berjalan pada
+     setiap permintaan API, sehingga kolom yang tidak dipakai — termasuk hash
+     kata sandi — akan mengalir keluar Supabase ribuan kali sehari tanpa guna. */
+  db.satu<Pengguna>(
+    `SELECT id, username, nama, peran, karyawan_id, customer_id
+     FROM pengguna WHERE id = $1 AND aktif = true`,
+    [sub]
+  )
+    .then((pengguna) => {
+      if (!pengguna) return res.status(401).json({ pesan: 'Akun tidak aktif.' });
+      req.pengguna = pengguna;
+      next();
+    })
+    .catch(next);
 }
 
 export function wajibPeran(...peran: Peran[]) {

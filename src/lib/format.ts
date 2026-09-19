@@ -49,3 +49,14 @@ export function waktu(t: string | null | undefined): string {
 export const jam = (t: string | null | undefined): string => (t ? t.slice(0, 5) : '—');
 
 export const hariIniISO = (): string => new Date().toLocaleDateString('sv-SE');
+
+/**
+ * URL versi kecil sebuah foto.
+ *
+ * Daftar menampilkan foto sebesar kuku jari; memuat berkas ukuran penuh untuk
+ * tiap barisnya membuang sekitar dua puluh empat kali data yang dipakai.
+ * Foto lama yang tersimpan sebelum versi kecil ada tetap punya URL ini, dan
+ * peramban akan jatuh kembali ke versi penuh lewat onError di komponennya.
+ */
+export const fotoKecil = (url: string | null | undefined): string | undefined =>
+  url ? url.replace(/(\.[a-z]+)$/i, '-kecil$1') : undefined;

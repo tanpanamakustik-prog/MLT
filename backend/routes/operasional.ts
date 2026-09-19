@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import { db, ambilPengaturan } from '../db.js';
+import { db, transaksi, ambilPengaturan } from '../db.js';
 import { wajibMasuk, wajibPeran } from '../auth.js';
 import { catatAudit } from '../audit.js';
-import { simpanFotoBase64 } from '../berkas.js';
-import { hariIni, jarakMeter, nomorBerikutnya, waktuSekarang } from '../util.js';
+import { simpanFoto } from '../berkas.js';
+import { hariIni, jamSekarang, jarakMeter, nomorBerikutnya } from '../util.js';
 import { angka, bungkus, GalatPermintaan, wajibTeks } from '../http.js';
 
 export const rutOperasional = Router();
@@ -16,33 +16,48 @@ function karyawanSaya(req: any): number {
   return id;
 }
 
-function titikKantor() {
+async function titikKantor() {
   return {
-    lat: Number(ambilPengaturan('absensi_lat', process.env.ABSENSI_LAT ?? '-7.797068')),
-    lng: Number(ambilPengaturan('absensi_lng', process.env.ABSENSI_LNG ?? '110.370529')),
-    radius: Number(ambilPengaturan('absensi_radius_m', process.env.ABSENSI_RADIUS_M ?? '150')),
+    lat: Number(await ambilPengaturan('absensi_lat', process.env.ABSENSI_LAT ?? '-7.797068')),
+    lng: Number(await ambilPengaturan('absensi_lng', process.env.ABSENSI_LNG ?? '110.370529')),
+    radius: Number(await ambilPengaturan('absensi_radius_m', process.env.ABSENSI_RADIUS_M ?? '150')),
   };
 }
 
 /* ----------------------------------------------------------------- Absensi */
 
-rutOperasional.get('/absensi/hari-ini', (req, res) => {
-  const baris = db.prepare('SELECT * FROM absensi WHERE karyawan_id = ? AND tanggal = ?').get(karyawanSaya(req), hariIni());
-  res.json({ absensi: baris ?? null, kantor: titikKantor() });
-});
+rutOperasional.get(
+  '/absensi/hari-ini',
+  bungkus(async (req, res) => {
+    const baris = await db.satu(
+      'SELECT * FROM absensi WHERE karyawan_id = $1 AND tanggal = $2::date',
+      [karyawanSaya(req), hariIni()]
+    );
+    res.json({ absensi: baris ?? null, kantor: await titikKantor() });
+  })
+);
 
-rutOperasional.get('/absensi', wajibPeran('owner', 'admin'), (req, res) => {
-  const dari = String(req.query.dari ?? hariIni());
-  const sampai = String(req.query.sampai ?? hariIni());
-  res.json(
-    db
-      .prepare(
-        `SELECT a.*, k.nama, k.jabatan FROM absensi a JOIN karyawan k ON k.id = a.karyawan_id
-         WHERE a.tanggal BETWEEN ? AND ? ORDER BY a.tanggal DESC, k.nama`
+rutOperasional.get(
+  '/absensi',
+  wajibPeran('owner', 'admin'),
+  bungkus(async (req, res) => {
+    const dari = String(req.query.dari ?? hariIni());
+    const sampai = String(req.query.sampai ?? hariIni());
+    /* foto_pulang tidak ikut: tabel absensi hanya menampilkan satu foto per
+       baris, dan tiap URL yang terkirim berujung pada satu unduhan berkas. */
+    res.json(
+      await db.banyak(
+        `SELECT a.id, a.karyawan_id, a.tanggal, a.jam_masuk, a.jam_pulang,
+                a.jarak_masuk_m, a.status, a.foto_masuk, k.nama, k.jabatan
+         FROM absensi a JOIN karyawan k ON k.id = a.karyawan_id
+         WHERE a.tanggal BETWEEN $1::date AND $2::date
+         ORDER BY a.tanggal DESC, k.nama
+         LIMIT $3`,
+        [dari, sampai, Math.min(500, Math.max(1, Math.round(angka(req.query.batas, 200))))]
       )
-      .all(dari, sampai)
-  );
-});
+    );
+  })
+);
 
 /**
  * Absen masuk dan pulang.
@@ -52,7 +67,7 @@ rutOperasional.get('/absensi', wajibPeran('owner', 'admin'), (req, res) => {
  * ke pasar tetap harus tercatat. Yang dicatat adalah jaraknya, supaya owner
  * melihat mana yang di luar area dan menilai sendiri.
  */
-function catatAbsen(req: any, sesi: 'masuk' | 'pulang') {
+async function catatAbsen(req: any, sesi: 'masuk' | 'pulang') {
   const karyawanId = karyawanSaya(req);
   const b = req.body ?? {};
   const lat = Number(b.lat);
@@ -60,29 +75,36 @@ function catatAbsen(req: any, sesi: 'masuk' | 'pulang') {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
     throw new GalatPermintaan('Lokasi GPS tidak terbaca. Aktifkan izin lokasi lalu coba lagi.');
   }
-  const foto = simpanFotoBase64(b.foto, `absen-${sesi}`);
+  const foto = await simpanFoto(b.foto, `absen-${sesi}`);
   if (!foto) throw new GalatPermintaan('Foto selfie wajib diambil.');
 
-  const kantor = titikKantor();
+  const kantor = await titikKantor();
   const jarak = jarakMeter(lat, lng, kantor.lat, kantor.lng);
   const diLuarArea = jarak > kantor.radius;
   const tanggal = hariIni();
-  const jam = waktuSekarang().slice(11, 19);
+  const jam = jamSekarang();
 
   if (sesi === 'masuk') {
-    const sudah = db.prepare('SELECT id FROM absensi WHERE karyawan_id = ? AND tanggal = ?').get(karyawanId, tanggal);
-    if (sudah) throw new GalatPermintaan('Anda sudah melakukan absen masuk hari ini.', 409);
-
-    const batasMasuk = ambilPengaturan('absensi_jam_masuk', '08:00:00');
-    db.prepare(
+    const batasMasuk = await ambilPengaturan('absensi_jam_masuk', '08:00:00');
+    /* Satu perintah, bukan cek-lalu-sisip: dua permintaan yang tiba bersamaan
+       akan membuat pemeriksaan terpisah sama-sama lolos. Batasan UNIQUE pada
+       (karyawan_id, tanggal) yang memutuskan, dan jumlah baris yang tersisip
+       memberitahu apakah absennya baru atau sudah ada. */
+    const sisip = await db.jalankan(
       `INSERT INTO absensi (karyawan_id, tanggal, jam_masuk, lat_masuk, lng_masuk, foto_masuk, jarak_masuk_m, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(karyawanId, tanggal, jam, lat, lng, foto, jarak, jam > batasMasuk ? 'terlambat' : 'hadir');
+       VALUES ($1, $2::date, $3::time, $4, $5, $6, $7, $8)
+       ON CONFLICT (karyawan_id, tanggal) DO NOTHING`,
+      [karyawanId, tanggal, jam, lat, lng, foto, jarak, jam > batasMasuk ? 'terlambat' : 'hadir']
+    );
+    if (sisip === 0) throw new GalatPermintaan('Anda sudah melakukan absen masuk hari ini.', 409);
   } else {
-    const baris = db.prepare('SELECT id FROM absensi WHERE karyawan_id = ? AND tanggal = ?').get(karyawanId, tanggal) as any;
-    if (!baris) throw new GalatPermintaan('Belum ada absen masuk hari ini.', 409);
-    db.prepare('UPDATE absensi SET jam_pulang = ?, lat_pulang = ?, lng_pulang = ?, foto_pulang = ?, jarak_pulang_m = ? WHERE id = ?')
-      .run(jam, lat, lng, foto, jarak, baris.id);
+    const ubah = await db.jalankan(
+      `UPDATE absensi SET jam_pulang = $1::time, lat_pulang = $2, lng_pulang = $3,
+              foto_pulang = $4, jarak_pulang_m = $5
+       WHERE karyawan_id = $6 AND tanggal = $7::date`,
+      [jam, lat, lng, foto, jarak, karyawanId, tanggal]
+    );
+    if (ubah === 0) throw new GalatPermintaan('Belum ada absen masuk hari ini.', 409);
   }
 
   return {
@@ -96,44 +118,46 @@ function catatAbsen(req: any, sesi: 'masuk' | 'pulang') {
   };
 }
 
-rutOperasional.post('/absensi/masuk', bungkus((req, res) => res.json(catatAbsen(req, 'masuk'))));
-rutOperasional.post('/absensi/pulang', bungkus((req, res) => res.json(catatAbsen(req, 'pulang'))));
+rutOperasional.post('/absensi/masuk', bungkus(async (req, res) => res.json(await catatAbsen(req, 'masuk'))));
+rutOperasional.post('/absensi/pulang', bungkus(async (req, res) => res.json(await catatAbsen(req, 'pulang'))));
 
 /* --------------------------------------------------------------- Aktivitas */
 
-rutOperasional.get('/aktivitas', (req, res) => {
-  const pengguna = req.pengguna!;
-  /* Peran lapangan hanya melihat aktivitasnya sendiri; owner dan admin melihat
-     semuanya dan boleh menyaring per karyawan. */
-  const bolehSemua = ['owner', 'admin'].includes(pengguna.peran);
-  const karyawanId = bolehSemua ? (req.query.karyawan_id ? Number(req.query.karyawan_id) : null) : pengguna.karyawan_id;
-  const dari = String(req.query.dari ?? hariIni());
-  const sampai = String(req.query.sampai ?? hariIni());
+rutOperasional.get(
+  '/aktivitas',
+  bungkus(async (req, res) => {
+    const pengguna = req.pengguna!;
+    /* Peran lapangan hanya melihat aktivitasnya sendiri; owner dan admin melihat
+       semuanya dan boleh menyaring per karyawan. */
+    const bolehSemua = ['owner', 'admin'].includes(pengguna.peran);
+    const karyawanId = bolehSemua ? (req.query.karyawan_id ? Number(req.query.karyawan_id) : null) : pengguna.karyawan_id;
+    const dari = String(req.query.dari ?? hariIni());
+    const sampai = String(req.query.sampai ?? hariIni());
 
-  res.json(
-    db
-      .prepare(
-        `SELECT a.*, k.nama, k.jabatan, o.nomor AS nomor_pesanan
+    res.json(
+      await db.banyak(
+        `SELECT a.id, a.jenis, a.waktu, a.lat, a.lng, a.foto_url, a.catatan,
+                k.nama, k.jabatan, o.nomor AS nomor_pesanan
          FROM aktivitas a JOIN karyawan k ON k.id = a.karyawan_id
          LEFT JOIN pesanan o ON o.id = a.pesanan_id
-         WHERE date(a.waktu) BETWEEN ? AND ? AND (? IS NULL OR a.karyawan_id = ?)
-         ORDER BY a.waktu DESC LIMIT 500`
+         WHERE a.waktu::date BETWEEN $1::date AND $2::date
+           AND ($3::int IS NULL OR a.karyawan_id = $3::int)
+         ORDER BY a.waktu DESC LIMIT $4`,
+        [dari, sampai, karyawanId, Math.min(500, Math.max(1, Math.round(angka(req.query.batas, 200))))]
       )
-      .all(dari, sampai, karyawanId, karyawanId)
-  );
-});
+    );
+  })
+);
 
 rutOperasional.post(
   '/aktivitas',
-  bungkus((req, res) => {
+  bungkus(async (req, res) => {
     const b = req.body ?? {};
-    const foto = simpanFotoBase64(b.foto, 'aktivitas');
-    const hasil = db
-      .prepare(
-        `INSERT INTO aktivitas (karyawan_id, jenis, lat, lng, foto_url, pesanan_id, pengiriman_id, catatan)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-      )
-      .run(
+    const foto = await simpanFoto(b.foto, 'aktivitas');
+    const baris = await db.satu<{ id: number }>(
+      `INSERT INTO aktivitas (karyawan_id, jenis, lat, lng, foto_url, pesanan_id, pengiriman_id, catatan)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+      [
         karyawanSaya(req),
         wajibTeks(b.jenis, 'Jenis aktivitas'),
         b.lat != null ? Number(b.lat) : null,
@@ -141,51 +165,60 @@ rutOperasional.post(
         foto,
         b.pesanan_id ? Number(b.pesanan_id) : null,
         b.pengiriman_id ? Number(b.pengiriman_id) : null,
-        b.catatan ?? null
-      );
-    res.status(201).json({ id: hasil.lastInsertRowid });
+        b.catatan ?? null,
+      ]
+    );
+    res.status(201).json({ id: baris!.id });
   })
 );
 
 /* -------------------------------------------------------------- Pengiriman */
 
-rutOperasional.get('/pengiriman', (req, res) => {
-  const pengguna = req.pengguna!;
-  const driverId = pengguna.peran === 'driver' ? pengguna.karyawan_id : req.query.driver_id ? Number(req.query.driver_id) : null;
-  const status = req.query.status ? String(req.query.status) : null;
+rutOperasional.get(
+  '/pengiriman',
+  bungkus(async (req, res) => {
+    const pengguna = req.pengguna!;
+    const driverId = pengguna.peran === 'driver' ? pengguna.karyawan_id : req.query.driver_id ? Number(req.query.driver_id) : null;
+    const status = req.query.status ? String(req.query.status) : null;
 
-  res.json(
-    db
-      .prepare(
-        `SELECT g.*, o.nomor AS nomor_pesanan, o.total, c.nama AS customer, c.alamat, c.no_hp, k.nama AS driver
+    res.json(
+      await db.banyak(
+        `SELECT g.id, g.nomor, g.status, g.driver_id, g.dimulai_pada, g.selesai_pada,
+                o.nomor AS nomor_pesanan, o.total, c.nama AS customer, c.alamat, c.no_hp, k.nama AS driver
          FROM pengiriman g
          JOIN pesanan o ON o.id = g.pesanan_id
          JOIN customer c ON c.id = o.customer_id
          LEFT JOIN karyawan k ON k.id = g.driver_id
-         WHERE (? IS NULL OR g.driver_id = ?) AND (? IS NULL OR g.status = ?)
-         ORDER BY CASE g.status WHEN 'selesai' THEN 1 WHEN 'gagal' THEN 1 ELSE 0 END, g.id DESC
-         LIMIT 200`
+         WHERE ($1::int IS NULL OR g.driver_id = $1::int)
+           AND ($2::text IS NULL OR g.status = $2)
+         ORDER BY CASE WHEN g.status IN ('selesai','gagal') THEN 1 ELSE 0 END, g.id DESC
+         LIMIT $3`,
+        [driverId, status, Math.min(300, Math.max(1, Math.round(angka(req.query.batas, 100))))]
       )
-      .all(driverId, driverId, status, status)
-  );
-});
+    );
+  })
+);
 
 rutOperasional.get(
   '/pengiriman/:id',
-  bungkus((req, res) => {
+  bungkus(async (req, res) => {
     const id = Number(req.params.id);
-    const kirim = db
-      .prepare(
-        `SELECT g.*, o.nomor AS nomor_pesanan, o.total, c.nama AS customer, c.alamat, c.no_hp, k.nama AS driver
-         FROM pengiriman g JOIN pesanan o ON o.id = g.pesanan_id JOIN customer c ON c.id = o.customer_id
-         LEFT JOIN karyawan k ON k.id = g.driver_id WHERE g.id = ?`
-      )
-      .get(id) as any;
+    const kirim = await db.satu<any>(
+      `SELECT g.*, o.nomor AS nomor_pesanan, o.total, c.nama AS customer, c.alamat, c.no_hp, k.nama AS driver
+       FROM pengiriman g JOIN pesanan o ON o.id = g.pesanan_id JOIN customer c ON c.id = o.customer_id
+       LEFT JOIN karyawan k ON k.id = g.driver_id WHERE g.id = $1`,
+      [id]
+    );
     if (!kirim) throw new GalatPermintaan('Data pengiriman tidak ditemukan.', 404);
-    kirim.item = db
-      .prepare('SELECT i.qty, i.harga, i.subtotal, p.nama, p.satuan FROM pesanan_item i JOIN produk p ON p.id = i.produk_id WHERE i.pesanan_id = ?')
-      .all(kirim.pesanan_id);
-    kirim.timeline = db.prepare('SELECT * FROM aktivitas WHERE pengiriman_id = ? ORDER BY waktu').all(id);
+    kirim.item = await db.banyak(
+      `SELECT i.qty, i.harga, i.subtotal, p.nama, p.satuan
+       FROM pesanan_item i JOIN produk p ON p.id = i.produk_id WHERE i.pesanan_id = $1 ORDER BY i.id`,
+      [kirim.pesanan_id]
+    );
+    kirim.timeline = await db.banyak(
+      'SELECT id, jenis, waktu, lat, lng FROM aktivitas WHERE pengiriman_id = $1 ORDER BY waktu',
+      [id]
+    );
     res.json(kirim);
   })
 );
@@ -193,20 +226,25 @@ rutOperasional.get(
 rutOperasional.post(
   '/pengiriman',
   wajibPeran('owner', 'admin', 'gudang'),
-  bungkus((req, res) => {
+  bungkus(async (req, res) => {
     const pesananId = Number(req.body?.pesanan_id);
-    const pesanan = db.prepare('SELECT * FROM pesanan WHERE id = ?').get(pesananId) as any;
-    if (!pesanan) throw new GalatPermintaan('Pesanan tidak ditemukan.', 404);
-    if (pesanan.status_kirim === 'batal') throw new GalatPermintaan('Pesanan ini sudah dibatalkan.', 409);
 
-    const nomor = nomorBerikutnya('pengiriman', 'DO');
-    const hasil = db
-      .prepare('INSERT INTO pengiriman (nomor, pesanan_id, driver_id, catatan) VALUES (?, ?, ?, ?)')
-      .run(nomor, pesananId, req.body?.driver_id ? Number(req.body.driver_id) : null, req.body?.catatan ?? null);
-    db.prepare(`UPDATE pesanan SET status_kirim = 'diproses' WHERE id = ?`).run(pesananId);
+    const hasil = await transaksi(async (k) => {
+      const pesanan = await k.satu<any>('SELECT id, nomor, status_kirim FROM pesanan WHERE id = $1', [pesananId]);
+      if (!pesanan) throw new GalatPermintaan('Pesanan tidak ditemukan.', 404);
+      if (pesanan.status_kirim === 'batal') throw new GalatPermintaan('Pesanan ini sudah dibatalkan.', 409);
 
-    catatAudit({ user: req.pengguna, aksi: 'tambah', entitas: 'pengiriman', entitasId: Number(hasil.lastInsertRowid), ringkasan: `${nomor} untuk ${pesanan.nomor}` });
-    res.status(201).json({ id: hasil.lastInsertRowid, nomor });
+      const nomor = await nomorBerikutnya(k, 'pengiriman', 'DO');
+      const dibuat = await k.satu<{ id: number }>(
+        'INSERT INTO pengiriman (nomor, pesanan_id, driver_id, catatan) VALUES ($1, $2, $3, $4) RETURNING id',
+        [nomor, pesananId, req.body?.driver_id ? Number(req.body.driver_id) : null, req.body?.catatan ?? null]
+      );
+      await k.jalankan(`UPDATE pesanan SET status_kirim = 'diproses' WHERE id = $1`, [pesananId]);
+      return { id: dibuat!.id, nomor, nomorPesanan: pesanan.nomor as string };
+    });
+
+    await catatAudit({ user: req.pengguna, aksi: 'tambah', entitas: 'pengiriman', entitasId: hasil.id, ringkasan: `${hasil.nomor} untuk ${hasil.nomorPesanan}` });
+    res.status(201).json({ id: hasil.id, nomor: hasil.nomor });
   })
 );
 
@@ -222,26 +260,18 @@ const URUTAN_KIRIM = ['ditugaskan', 'berangkat', 'sampai', 'bongkar', 'diterima'
  */
 rutOperasional.patch(
   '/pengiriman/:id/status',
-  bungkus((req, res) => {
+  bungkus(async (req, res) => {
     const id = Number(req.params.id);
-    const kirim = db.prepare('SELECT * FROM pengiriman WHERE id = ?').get(id) as any;
-    if (!kirim) throw new GalatPermintaan('Data pengiriman tidak ditemukan.', 404);
-
     const pengguna = req.pengguna!;
-    if (pengguna.peran === 'driver' && kirim.driver_id !== pengguna.karyawan_id) {
-      throw new GalatPermintaan('Pengiriman ini ditugaskan ke driver lain.', 403);
-    }
-
     const b = req.body ?? {};
     const status = String(b.status ?? '');
-    if (!URUTAN_KIRIM.includes(status as any) && status !== 'gagal') {
+
+    if (!URUTAN_KIRIM.includes(status as never) && status !== 'gagal') {
       throw new GalatPermintaan('Status pengiriman tidak dikenali.');
     }
-    if (['selesai', 'gagal'].includes(kirim.status)) {
-      throw new GalatPermintaan('Pengiriman ini sudah ditutup.', 409);
-    }
 
-    const foto = simpanFotoBase64(b.foto, `kirim-${status}`);
+    const foto = await simpanFoto(b.foto, `kirim-${status}`);
+    const ttd = await simpanFoto(b.ttd, 'ttd');
     const lat = b.lat != null ? Number(b.lat) : null;
     const lng = b.lng != null ? Number(b.lng) : null;
 
@@ -252,33 +282,39 @@ rutOperasional.patch(
       if (!String(b.penerima ?? '').trim()) throw new GalatPermintaan('Nama penerima wajib diisi.');
     }
 
-    const proses = db.transaction(() => {
-      db.prepare(
-        `UPDATE pengiriman SET status = ?,
-           dimulai_pada = COALESCE(dimulai_pada, CASE WHEN ? = 'berangkat' THEN datetime('now','localtime') END),
-           selesai_pada = CASE WHEN ? IN ('selesai','gagal') THEN datetime('now','localtime') ELSE selesai_pada END,
-           penerima = COALESCE(?, penerima), foto_url = COALESCE(?, foto_url),
-           ttd_url = COALESCE(?, ttd_url), lat = COALESCE(?, lat), lng = COALESCE(?, lng),
-           catatan = COALESCE(?, catatan)
-         WHERE id = ?`
-      ).run(
-        status, status, status,
-        b.penerima ?? null, foto, simpanFotoBase64(b.ttd, 'ttd'),
-        lat, lng, b.catatan ?? null, id
+    await transaksi(async (k) => {
+      const kirim = await k.satu<any>('SELECT * FROM pengiriman WHERE id = $1 FOR UPDATE', [id]);
+      if (!kirim) throw new GalatPermintaan('Data pengiriman tidak ditemukan.', 404);
+      if (pengguna.peran === 'driver' && kirim.driver_id !== pengguna.karyawan_id) {
+        throw new GalatPermintaan('Pengiriman ini ditugaskan ke driver lain.', 403);
+      }
+      if (['selesai', 'gagal'].includes(kirim.status)) {
+        throw new GalatPermintaan('Pengiriman ini sudah ditutup.', 409);
+      }
+
+      await k.jalankan(
+        `UPDATE pengiriman SET status = $1,
+           dimulai_pada = COALESCE(dimulai_pada, CASE WHEN $1 = 'berangkat' THEN now() END),
+           selesai_pada = CASE WHEN $1 IN ('selesai','gagal') THEN now() ELSE selesai_pada END,
+           penerima = COALESCE($2, penerima), foto_url = COALESCE($3, foto_url),
+           ttd_url = COALESCE($4, ttd_url), lat = COALESCE($5, lat), lng = COALESCE($6, lng),
+           catatan = COALESCE($7, catatan)
+         WHERE id = $8`,
+        [status, b.penerima ?? null, foto, ttd, lat, lng, b.catatan ?? null, id]
       );
 
       if (pengguna.karyawan_id) {
-        db.prepare(
+        await k.jalankan(
           `INSERT INTO aktivitas (karyawan_id, jenis, lat, lng, foto_url, pesanan_id, pengiriman_id, catatan)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        ).run(pengguna.karyawan_id, `pengiriman:${status}`, lat, lng, foto, kirim.pesanan_id, id, b.catatan ?? null);
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [pengguna.karyawan_id, `pengiriman:${status}`, lat, lng, foto, kirim.pesanan_id, id, b.catatan ?? null]
+        );
       }
 
-      if (status === 'selesai') db.prepare(`UPDATE pesanan SET status_kirim = 'selesai' WHERE id = ?`).run(kirim.pesanan_id);
-      if (status === 'berangkat') db.prepare(`UPDATE pesanan SET status_kirim = 'dikirim' WHERE id = ?`).run(kirim.pesanan_id);
+      if (status === 'selesai') await k.jalankan(`UPDATE pesanan SET status_kirim = 'selesai' WHERE id = $1`, [kirim.pesanan_id]);
+      if (status === 'berangkat') await k.jalankan(`UPDATE pesanan SET status_kirim = 'dikirim' WHERE id = $1`, [kirim.pesanan_id]);
     });
 
-    proses();
     res.json({ ok: true, status });
   })
 );

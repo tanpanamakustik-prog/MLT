@@ -6,11 +6,11 @@ import { Galat, Kartu, KepalaKartu, Memuat, Tombol } from '../../components/ui/D
 import { useApi } from '../../lib/useApi';
 import { api, GalatApi } from '../../lib/api';
 import { jam } from '../../lib/format';
-import { ambilLokasi } from '../../lib/perangkat';
+import { ambilLokasi, type Foto } from '../../lib/perangkat';
 
 export default function Absen() {
   const { data, memuat, galat, muatUlang } = useApi<any>('/operasional/absensi/hari-ini');
-  const [foto, setFoto] = useState<string | null>(null);
+  const [foto, setFoto] = useState<Foto | null>(null);
   const [galatAksi, setGalatAksi] = useState<string | null>(null);
   const [pesan, setPesan] = useState<{ teks: string; diLuarArea: boolean } | null>(null);
   const [sibuk, setSibuk] = useState(false);

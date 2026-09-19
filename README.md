@@ -6,10 +6,13 @@ aktivitas karyawan, dan pelaporan harian sampai tahunan.
 
 ## Menjalankan
 
+Butuh PostgreSQL. Di macOS: `brew install postgresql@18 && brew services start postgresql@18`.
+
 ```bash
+createdb mlt
 npm install
-cp .env.example .env         # ganti JWT_SECRET sebelum dipakai di luar laptop
-npm run reset -- --ya        # database kosong + satu akun owner
+cp .env.example .env         # isi DATABASE_URL, ganti JWT_SECRET
+npm run reset -- --ya        # skema + database kosong + satu akun owner
 npm run dev                  # http://localhost:3335
 ```
 
@@ -41,6 +44,50 @@ Perintah lain: `npm run build` (produksi), `npm start` (jalankan hasil build),
    ada kolom stok awal di form produk, supaya setiap penambahan stok punya
    asal-usul yang bisa ditelusuri.
 
+## Menyambung ke Supabase
+
+Isi `.env` dari dashboard Supabase:
+
+| Variabel | Dari mana | Boleh publik? |
+|---|---|---|
+| `DATABASE_URL` | Connect → **Transaction pooler**, port **6543** | tidak |
+| `SUPABASE_URL` | Project Settings → API | ya |
+| `SUPABASE_SECRET_KEY` | API keys → *secret* (dulu `service_role`) | **tidak** |
+| `VITE_SUPABASE_URL` | sama dengan `SUPABASE_URL` | ya |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | API keys → *publishable* (dulu `anon`) | ya |
+
+Lalu `DB_SSL=true`.
+
+**Port 6543, bukan 5432.** Port 5432 adalah koneksi langsung: tiap fungsi
+serverless membuka koneksinya sendiri dan jatah koneksi project habis jauh
+sebelum lalu lintasnya ramai.
+
+**Kunci secret tidak boleh berawalan `VITE_`.** Vite membundel setiap variabel
+berawalan `VITE_` ke dalam JavaScript yang diunduh semua pengunjung. Server
+menolak menyala bila menemukannya, karena kebocoran semacam itu tidak
+meninggalkan jejak di log mana pun.
+
+## Hidup di kuota gratis
+
+Batas Supabase gratis: database 500 MB, storage 1 GB, **egress 5 GB/bulan**.
+Dari ketiganya hanya egress yang benar-benar mengikat, dan penyumbang
+terbesarnya foto — bukan data. Yang dilakukan basis kode ini:
+
+- **Foto disimpan dua ukuran.** Daftar memuat versi 240px (~11 KB), versi penuh
+  hanya saat fotonya dibuka. Tanpa ini, tabel absensi memuat berkas 260 KB untuk
+  menampilkan kotak 36 piksel — sekitar 24 kali data yang dipakai, atau 12%
+  jatah bulanan hanya untuk thumbnail.
+- **`SELECT` berkolom, bukan `*`.** Kueri autentikasi berjalan pada setiap
+  permintaan API; kolom yang tidak dipakai mengalir keluar ribuan kali sehari.
+- **Daftar dibatasi dan berhalaman**, bawaan 100 baris.
+- **Tanpa subkueri berkorelasi.** Laporan karyawan dulu menjalankan sembilan
+  kueri per orang tiap halaman dibuka; kini satu agregat sekali jalan.
+- **Audit log dipangkas** 2.000 karakter per nilai.
+- **`npm run seed` menolak jalan terhadap Supabase** kecuali dipaksa.
+
+Database kosong berukuran sekitar 9 MB; dua tahun transaksi data contoh
+menambah sekitar 40 MB.
+
 ## Data contoh untuk pengembangan
 
 `npm run seed` mengisi database dengan dua tahun transaksi buatan (~5.400
@@ -68,22 +115,39 @@ src/
 scripts/seed.ts    Pembangkit data contoh
 ```
 
-Teknologi: React 19, Vite 6, Tailwind 4, Recharts, Express 4, better-sqlite3,
+Teknologi: React 19, Vite 6, Tailwind 4, Recharts, Express 4, PostgreSQL (node-postgres),
 Capacitor 8.
 
 ## Keputusan yang perlu diketahui
 
-**Uang disimpan sebagai INTEGER rupiah penuh.** Bukan REAL. Harga bahan pokok
-tidak memakai sen, sementara REAL membuat penjumlahan ratusan baris order
-menghasilkan selisih recehan yang muncul di laporan bulanan dan tidak bisa
-dijelaskan ke pemilik usaha.
+**Uang disimpan sebagai bigint rupiah penuh.** Bukan pecahan: harga bahan pokok
+tidak memakai sen, sementara tipe pecahan membuat penjumlahan ratusan baris
+order menghasilkan selisih recehan yang muncul di laporan bulanan dan tidak bisa
+dijelaskan ke pemilik usaha. Dan bukan `integer`: omzet setahun usaha ini sudah
+menyentuh sembilan miliar rupiah, sementara `integer` Postgres berhenti di 2,1
+miliar. Driver dikonfigurasi mengembalikan bigint sebagai angka, bukan string —
+lihat `backend/db.ts`.
+
+**Zona waktu dipasang di setiap koneksi database, bukan diandalkan dari server.**
+Seluruh laporan berkunci pada tanggal lokal, sedangkan Vercel dan Supabase
+berjalan di UTC. Tanpa ini, pesanan pukul enam pagi WIB tercatat sebagai hari
+sebelumnya dan rekap harian salah tanpa ada yang menyadarinya.
+
+**Kartu stok diurutkan menurut urutan pencatatan, bukan waktu kejadian.** Kolom
+stok_sebelum dan stok_sesudah adalah saldo berjalan, dan saldo berjalan hanya
+punya arti dalam urutan ia ditulis. Penerimaan yang diinput keesokan harinya
+dengan tanggal mundur akan, bila diurutkan menurut waktu, menyelip di tengah
+rangkaian saldo yang dihitung tanpa dirinya.
 
 **Harga beli disalin ke tiap baris pesanan saat transaksi dibuat.** Harga
 kulakan berubah tiap minggu; tanpa salinan ini, laba bulan lalu ikut berubah
 setiap kali harga beli hari ini diperbarui.
 
-**Setiap perubahan stok melewati `ubahStok()`**, yang memperbarui `produk.stok`
-dan menulis satu baris `mutasi_stok` dalam transaksi yang sama. Jumlah seluruh
+**Setiap perubahan stok melewati `ubahStok()`**, yang mengunci baris produknya
+(`SELECT ... FOR UPDATE`), memperbarui `produk.stok`, dan menulis satu baris
+`mutasi_stok` dalam transaksi yang sama. Kunci baris itu wajib di Postgres: dua
+permintaan bisa benar-benar berjalan bersamaan, tidak seperti SQLite yang
+menyerialisasi penulisan. Jumlah seluruh
 mutasi sebuah produk karena itu selalu sama dengan stok tercatatnya. Rute mana
 pun yang mengubah `produk.stok` langsung akan memutus jaminan ini.
 

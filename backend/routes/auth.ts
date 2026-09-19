@@ -7,13 +7,15 @@ export const rutAuth = Router();
 
 rutAuth.post(
   '/login',
-  bungkus((req, res) => {
+  bungkus(async (req, res) => {
     const username = wajibTeks(req.body?.username, 'Username').toLowerCase();
     const sandi = wajibTeks(req.body?.kata_sandi, 'Kata sandi');
 
-    const baris = db
-      .prepare('SELECT * FROM pengguna WHERE lower(username) = ? AND aktif = 1')
-      .get(username) as (Pengguna & { kata_sandi: string }) | undefined;
+    const baris = await db.satu<Pengguna & { kata_sandi: string }>(
+      `SELECT id, username, nama, peran, karyawan_id, customer_id, kata_sandi
+       FROM pengguna WHERE lower(username) = $1 AND aktif = true`,
+      [username]
+    );
 
     /* Pesan yang sama untuk username salah dan sandi salah, agar halaman masuk
        tidak bisa dipakai memetakan akun mana yang ada. */

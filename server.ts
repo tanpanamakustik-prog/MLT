@@ -21,7 +21,24 @@ import { rutMaster } from './backend/routes/master.js';
 import { rutOperasional } from './backend/routes/operasional.js';
 import { rutPenjualan } from './backend/routes/penjualan.js';
 
-initDb();
+/**
+ * Kunci rahasia tidak boleh punya awalan VITE_.
+ *
+ * Vite membundel setiap variabel berawalan VITE_ ke dalam JavaScript yang
+ * diunduh semua pengunjung. Sekali kunci secret Supabase masuk ke sana, siapa
+ * pun yang membuka halaman ini memegang akses penuh ke database — dan kebocoran
+ * itu tidak meninggalkan jejak apa pun di log. Lebih baik server menolak
+ * menyala daripada menyala dengan kunci yang sudah tersebar.
+ */
+for (const kunci of Object.keys(process.env)) {
+  if (kunci.startsWith('VITE_') && /SECRET|SERVICE_ROLE|PRIVATE/i.test(kunci)) {
+    throw new Error(
+      `${kunci} berawalan VITE_, sehingga nilainya akan ikut terbundel ke dalam ` +
+      `berkas JavaScript yang diunduh setiap pengunjung. Hapus awalan VITE_, lalu ` +
+      `putar ulang kunci itu di dashboard Supabase karena ia harus dianggap sudah bocor.`
+    );
+  }
+}
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3335;
@@ -79,6 +96,10 @@ app.use('/api', (_req, res) => res.status(404).json({ pesan: 'Endpoint tidak dit
 app.use(penangananGalat);
 
 async function jalankan() {
+  /* Skema dipastikan ada sebelum port dibuka, supaya permintaan pertama tidak
+     mendarat di database yang belum punya tabel. */
+  await initDb();
+
   if (PRODUKSI) {
     const akar = path.resolve('dist');
     app.use(express.static(akar, { index: false }));

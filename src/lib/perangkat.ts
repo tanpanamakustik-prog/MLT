@@ -38,6 +38,27 @@ export function bacaSebagaiDataUrl(berkas: File): Promise<string> {
   });
 }
 
+export interface Foto {
+  penuh: string;
+  kecil: string;
+}
+
+/**
+ * Dua ukuran dari satu jepretan.
+ *
+ * Daftar absensi dan pengiriman menampilkan foto sebesar kuku jari, tetapi
+ * memuat berkas ukuran penuh untuk tiap barisnya — sekitar dua puluh empat kali
+ * data yang sebenarnya dipakai, dan pada kuota gratis itu berarti seperdelapan
+ * jatah bulanan habis hanya untuk kotak 36 piksel. Versi kecil dibuat di
+ * perangkat sekalian, jadi tidak ada pekerjaan tambahan di server.
+ */
+export async function siapkanFoto(berkas: File): Promise<Foto> {
+  return {
+    penuh: await kecilkanFoto(berkas, 1024, 0.72),
+    kecil: await kecilkanFoto(berkas, 240, 0.6),
+  };
+}
+
 /**
  * Mengecilkan foto sebelum dikirim.
  *

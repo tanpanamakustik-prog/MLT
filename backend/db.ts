@@ -1,237 +1,315 @@
-import Database from 'better-sqlite3';
-import fs from 'fs';
-import path from 'path';
-
-const DB_PATH = process.env.DB_PATH || 'data/distribusihub.sqlite';
-
-fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-
-export const db = new Database(DB_PATH);
-
-/* WAL supaya pembacaan laporan yang panjang tidak memblokir pencatatan
-   transaksi di gudang. Distributor memakai sistem ini sambil jalan: kasir
-   menginput order pada saat yang sama owner membuka rekap bulanan. */
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+import pg, { Pool, type PoolClient } from 'pg';
 
 /**
- * Seluruh nilai uang disimpan sebagai INTEGER rupiah penuh, bukan REAL.
+ * bigint dan numeric dikembalikan Postgres sebagai string, bukan angka.
  *
- * Harga bahan pokok tidak pernah memakai sen, sementara REAL membuat
- * penjumlahan ratusan baris order menghasilkan selisih recehan yang muncul di
- * laporan bulanan dan tidak bisa dijelaskan ke pemilik usaha.
+ * Alasannya benar: keduanya menampung nilai di luar jangkauan aman angka
+ * JavaScript. Tetapi seluruh nilai uang sistem ini berada jauh di bawah batas
+ * itu — omzet setahun sembilan miliar rupiah, sementara batas aman JavaScript
+ * sembilan ribu triliun — sedangkan dibiarkan sebagai string, harga produk
+ * sampai ke form pesanan sebagai teks dan perkaliannya menghasilkan omong
+ * kosong tanpa satu pun galat muncul.
  */
-export function initDb() {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS pengguna (
-      id            INTEGER PRIMARY KEY AUTOINCREMENT,
-      username      TEXT NOT NULL UNIQUE,
-      nama          TEXT NOT NULL,
-      email         TEXT,
-      no_hp         TEXT,
-      kata_sandi    TEXT NOT NULL,
-      peran         TEXT NOT NULL CHECK (peran IN ('owner','admin','gudang','sales','driver','buyer')),
-      karyawan_id   INTEGER REFERENCES karyawan(id),
-      customer_id   INTEGER REFERENCES customer(id),
-      aktif         INTEGER NOT NULL DEFAULT 1,
-      dibuat_pada   TEXT NOT NULL DEFAULT (datetime('now','localtime'))
-    );
+pg.types.setTypeParser(pg.types.builtins.INT8, (v) => Number(v));
+pg.types.setTypeParser(pg.types.builtins.NUMERIC, (v) => Number(v));
 
-    CREATE TABLE IF NOT EXISTS karyawan (
-      id                INTEGER PRIMARY KEY AUTOINCREMENT,
-      nama              TEXT NOT NULL,
-      jabatan           TEXT NOT NULL,
-      no_hp             TEXT,
-      status            TEXT NOT NULL DEFAULT 'aktif' CHECK (status IN ('aktif','cuti','nonaktif')),
-      tanggal_bergabung TEXT,
-      area_kerja        TEXT,
-      foto_url          TEXT
-    );
+/**
+ * Lapisan database.
+ *
+ * Postgres, bukan SQLite: berkas basis data tidak bertahan di lingkungan
+ * serverless, dan modul native better-sqlite3 tidak bisa dipasang di sana.
+ *
+ * Nilai uang memakai bigint, bukan integer. Omzet setahun usaha ini sudah
+ * menyentuh sembilan miliar rupiah, sementara integer Postgres berhenti di
+ * 2,1 miliar. SQLite tidak memunculkan masalah ini karena INTEGER-nya 64 bit;
+ * pindah ke Postgres dengan integer akan membuat angka meluber tanpa peringatan.
+ */
+const URL_DB = process.env.DATABASE_URL;
+if (!URL_DB) {
+  throw new Error('DATABASE_URL belum diisi di .env. Salin dari .env.example lalu sesuaikan.');
+}
 
+/* Zona waktu dipasang di setiap koneksi, bukan diandalkan dari setelan server.
+   Vercel dan Supabase berjalan di UTC; seluruh laporan sistem ini berkunci pada
+   tanggal lokal. Tanpa baris ini, pesanan pukul enam pagi WIB tercatat sebagai
+   hari sebelumnya dan rekap harian salah tanpa ada yang menyadarinya. */
+export const ZONA = process.env.ZONA_WAKTU ?? 'Asia/Jakarta';
+
+export const pool = new Pool({
+  connectionString: URL_DB,
+  /* Zona dikirim sebagai parameter startup koneksi, bukan lewat event 'connect'.
+     Handler event tidak ditunggu oleh pool, sehingga kueri pertama bisa berjalan
+     sebelum SET TIME ZONE selesai — dan justru kueri pertama itulah yang paling
+     sering menghitung tanggal. */
+  options: `-c timezone=${process.env.ZONA_WAKTU ?? 'Asia/Jakarta'}`,
+  /* Lingkungan serverless membuat banyak koneksi berumur pendek; batas kecil
+     mencegah satu penyebaran menghabiskan jatah koneksi Postgres. */
+  max: Number(process.env.DB_MAKS_KONEKSI ?? 8),
+  idleTimeoutMillis: 20_000,
+  connectionTimeoutMillis: 10_000,
+  ...(process.env.DB_SSL === 'true' ? { ssl: { rejectUnauthorized: false } } : {}),
+});
+
+/** Antarmuka kueri yang sama untuk pool maupun klien di dalam transaksi. */
+export interface Kueri {
+  satu<T>(sql: string, params?: unknown[]): Promise<T | undefined>;
+  banyak<T>(sql: string, params?: unknown[]): Promise<T[]>;
+  jalankan(sql: string, params?: unknown[]): Promise<number>;
+}
+
+function bungkus(p: Pool | PoolClient): Kueri {
+  return {
+    async satu<T>(sql: string, params: unknown[] = []) {
+      const r = await p.query(sql, params as never[]);
+      return r.rows[0] as T | undefined;
+    },
+    async banyak<T>(sql: string, params: unknown[] = []) {
+      const r = await p.query(sql, params as never[]);
+      return r.rows as T[];
+    },
+    async jalankan(sql: string, params: unknown[] = []) {
+      const r = await p.query(sql, params as never[]);
+      return r.rowCount ?? 0;
+    },
+  };
+}
+
+export const db: Kueri = bungkus(pool);
+
+/**
+ * Menjalankan beberapa perintah sebagai satu transaksi.
+ *
+ * Seluruh perintah di dalamnya wajib memakai klien yang diberikan, bukan `db`.
+ * Memakai `db` di dalam blok ini mengambil koneksi lain dari pool, sehingga
+ * perintahnya berada di luar transaksi dan tidak ikut dibatalkan saat gagal —
+ * persis keadaan yang ingin dicegah ketika stok dan pesanan harus berhasil
+ * atau gagal bersama-sama.
+ */
+export async function transaksi<T>(fn: (k: Kueri) => Promise<T>): Promise<T> {
+  const klien = await pool.connect();
+  try {
+    await klien.query('BEGIN');
+    const hasil = await fn(bungkus(klien));
+    await klien.query('COMMIT');
+    return hasil;
+  } catch (e) {
+    await klien.query('ROLLBACK');
+    throw e;
+  } finally {
+    klien.release();
+  }
+}
+
+/**
+ * Skema.
+ *
+ * Urutan tabel mengikuti ketergantungan kunci asing: Postgres menolak acuan ke
+ * tabel yang belum ada, tidak seperti SQLite yang membiarkannya.
+ */
+export async function initDb() {
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS kategori (
-      id    INTEGER PRIMARY KEY AUTOINCREMENT,
-      nama  TEXT NOT NULL UNIQUE
+      id    integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+      nama  text NOT NULL UNIQUE
     );
 
     CREATE TABLE IF NOT EXISTS supplier (
-      id              INTEGER PRIMARY KEY AUTOINCREMENT,
-      nama            TEXT NOT NULL,
-      alamat          TEXT,
-      kontak          TEXT,
-      no_hp           TEXT,
-      lead_time_hari  INTEGER NOT NULL DEFAULT 3,
-      aktif           INTEGER NOT NULL DEFAULT 1
+      id              integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+      nama            text NOT NULL,
+      alamat          text,
+      kontak          text,
+      no_hp           text,
+      lead_time_hari  integer NOT NULL DEFAULT 3,
+      aktif           boolean NOT NULL DEFAULT true
     );
 
-    CREATE TABLE IF NOT EXISTS produk (
-      id            INTEGER PRIMARY KEY AUTOINCREMENT,
-      sku           TEXT NOT NULL UNIQUE,
-      nama          TEXT NOT NULL,
-      kategori_id   INTEGER REFERENCES kategori(id),
-      supplier_id   INTEGER REFERENCES supplier(id),
-      satuan        TEXT NOT NULL DEFAULT 'pcs',
-      harga_beli    INTEGER NOT NULL DEFAULT 0,
-      harga_jual    INTEGER NOT NULL DEFAULT 0,
-      stok          INTEGER NOT NULL DEFAULT 0,
-      stok_minimum  INTEGER NOT NULL DEFAULT 0,
-      safety_stock  INTEGER NOT NULL DEFAULT 0,
-      kelipatan_beli INTEGER NOT NULL DEFAULT 1,
-      foto_url      TEXT,
-      aktif         INTEGER NOT NULL DEFAULT 1,
-      dibuat_pada   TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+    CREATE TABLE IF NOT EXISTS karyawan (
+      id                integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+      nama              text NOT NULL,
+      jabatan           text NOT NULL,
+      no_hp             text,
+      status            text NOT NULL DEFAULT 'aktif' CHECK (status IN ('aktif','cuti','nonaktif')),
+      tanggal_bergabung date,
+      area_kerja        text,
+      foto_url          text
     );
 
     CREATE TABLE IF NOT EXISTS customer (
-      id            INTEGER PRIMARY KEY AUTOINCREMENT,
-      kode          TEXT UNIQUE,
-      nama          TEXT NOT NULL,
-      alamat        TEXT,
-      no_hp         TEXT,
-      tipe          TEXT NOT NULL DEFAULT 'toko' CHECK (tipe IN ('toko','grosir','retail','horeka')),
-      sales_id      INTEGER REFERENCES karyawan(id),
-      limit_kredit  INTEGER NOT NULL DEFAULT 0,
-      status        TEXT NOT NULL DEFAULT 'aktif' CHECK (status IN ('aktif','nonaktif','blokir')),
-      lat           REAL,
-      lng           REAL,
-      dibuat_pada   TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      id            integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+      kode          text UNIQUE,
+      nama          text NOT NULL,
+      alamat        text,
+      no_hp         text,
+      tipe          text NOT NULL DEFAULT 'toko' CHECK (tipe IN ('toko','grosir','retail','horeka')),
+      sales_id      integer REFERENCES karyawan(id),
+      limit_kredit  bigint NOT NULL DEFAULT 0,
+      status        text NOT NULL DEFAULT 'aktif' CHECK (status IN ('aktif','nonaktif','blokir')),
+      lat           double precision,
+      lng           double precision,
+      dibuat_pada   timestamptz NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS produk (
+      id             integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+      sku            text NOT NULL UNIQUE,
+      nama           text NOT NULL,
+      kategori_id    integer REFERENCES kategori(id),
+      supplier_id    integer REFERENCES supplier(id),
+      satuan         text NOT NULL DEFAULT 'pcs',
+      harga_beli     bigint NOT NULL DEFAULT 0,
+      harga_jual     bigint NOT NULL DEFAULT 0,
+      stok           integer NOT NULL DEFAULT 0,
+      stok_minimum   integer NOT NULL DEFAULT 0,
+      safety_stock   integer NOT NULL DEFAULT 0,
+      kelipatan_beli integer NOT NULL DEFAULT 1,
+      foto_url       text,
+      aktif          boolean NOT NULL DEFAULT true,
+      dibuat_pada    timestamptz NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS pengguna (
+      id            integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+      username      text NOT NULL UNIQUE,
+      nama          text NOT NULL,
+      email         text,
+      no_hp         text,
+      kata_sandi    text NOT NULL,
+      peran         text NOT NULL CHECK (peran IN ('owner','admin','gudang','sales','driver','buyer')),
+      karyawan_id   integer REFERENCES karyawan(id),
+      customer_id   integer REFERENCES customer(id),
+      aktif         boolean NOT NULL DEFAULT true,
+      dibuat_pada   timestamptz NOT NULL DEFAULT now()
     );
 
     CREATE TABLE IF NOT EXISTS pesanan (
-      id            INTEGER PRIMARY KEY AUTOINCREMENT,
-      nomor         TEXT NOT NULL UNIQUE,
-      customer_id   INTEGER NOT NULL REFERENCES customer(id),
-      sales_id      INTEGER REFERENCES karyawan(id),
-      tanggal       TEXT NOT NULL,
-      subtotal      INTEGER NOT NULL DEFAULT 0,
-      diskon        INTEGER NOT NULL DEFAULT 0,
-      ongkir        INTEGER NOT NULL DEFAULT 0,
-      total         INTEGER NOT NULL DEFAULT 0,
-      hpp_total     INTEGER NOT NULL DEFAULT 0,
-      status_bayar  TEXT NOT NULL DEFAULT 'belum' CHECK (status_bayar IN ('belum','sebagian','lunas')),
-      status_kirim  TEXT NOT NULL DEFAULT 'baru' CHECK (status_kirim IN ('baru','diproses','dikirim','selesai','batal')),
-      catatan       TEXT,
-      dibuat_oleh   INTEGER REFERENCES pengguna(id),
-      dibuat_pada   TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      id            integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+      nomor         text NOT NULL UNIQUE,
+      customer_id   integer NOT NULL REFERENCES customer(id),
+      sales_id      integer REFERENCES karyawan(id),
+      tanggal       date NOT NULL,
+      subtotal      bigint NOT NULL DEFAULT 0,
+      diskon        bigint NOT NULL DEFAULT 0,
+      ongkir        bigint NOT NULL DEFAULT 0,
+      total         bigint NOT NULL DEFAULT 0,
+      hpp_total     bigint NOT NULL DEFAULT 0,
+      status_bayar  text NOT NULL DEFAULT 'belum' CHECK (status_bayar IN ('belum','sebagian','lunas')),
+      status_kirim  text NOT NULL DEFAULT 'baru' CHECK (status_kirim IN ('baru','diproses','dikirim','selesai','batal')),
+      catatan       text,
+      dibuat_oleh   integer REFERENCES pengguna(id),
+      dibuat_pada   timestamptz NOT NULL DEFAULT now()
     );
 
-    /* harga_beli disalin ke tiap baris saat transaksi dibuat, bukan dibaca dari
-       produk saat laporan dijalankan. Harga kulakan bahan pokok berubah tiap
-       minggu; tanpa salinan ini, profit bulan lalu ikut berubah setiap kali
-       harga beli hari ini diperbarui. */
     CREATE TABLE IF NOT EXISTS pesanan_item (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      pesanan_id  INTEGER NOT NULL REFERENCES pesanan(id) ON DELETE CASCADE,
-      produk_id   INTEGER NOT NULL REFERENCES produk(id),
-      qty         INTEGER NOT NULL,
-      harga       INTEGER NOT NULL,
-      harga_beli  INTEGER NOT NULL DEFAULT 0,
-      subtotal    INTEGER NOT NULL
-    );
-
-    /* Buku besar stok. Setiap perubahan stok produk wajib menulis satu baris di
-       sini pada transaksi yang sama, supaya stok akhir selalu bisa ditelusuri
-       balik ke asalnya. */
-    CREATE TABLE IF NOT EXISTS mutasi_stok (
-      id            INTEGER PRIMARY KEY AUTOINCREMENT,
-      produk_id     INTEGER NOT NULL REFERENCES produk(id),
-      tipe          TEXT NOT NULL CHECK (tipe IN ('masuk','keluar','adjustment')),
-      qty           INTEGER NOT NULL,
-      stok_sebelum  INTEGER NOT NULL,
-      stok_sesudah  INTEGER NOT NULL,
-      ref_tipe      TEXT,
-      ref_id        INTEGER,
-      catatan       TEXT,
-      oleh          INTEGER REFERENCES pengguna(id),
-      waktu         TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      id          integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+      pesanan_id  integer NOT NULL REFERENCES pesanan(id) ON DELETE CASCADE,
+      produk_id   integer NOT NULL REFERENCES produk(id),
+      qty         integer NOT NULL,
+      harga       bigint NOT NULL,
+      harga_beli  bigint NOT NULL DEFAULT 0,
+      subtotal    bigint NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS pembelian (
-      id            INTEGER PRIMARY KEY AUTOINCREMENT,
-      nomor         TEXT NOT NULL UNIQUE,
-      supplier_id   INTEGER NOT NULL REFERENCES supplier(id),
-      tanggal       TEXT NOT NULL,
-      total         INTEGER NOT NULL DEFAULT 0,
-      status        TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','dipesan','diterima','batal')),
-      catatan       TEXT,
-      dibuat_oleh   INTEGER REFERENCES pengguna(id),
-      dibuat_pada   TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      id            integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+      nomor         text NOT NULL UNIQUE,
+      supplier_id   integer NOT NULL REFERENCES supplier(id),
+      tanggal       date NOT NULL,
+      total         bigint NOT NULL DEFAULT 0,
+      status        text NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','dipesan','diterima','batal')),
+      catatan       text,
+      dibuat_oleh   integer REFERENCES pengguna(id),
+      dibuat_pada   timestamptz NOT NULL DEFAULT now()
     );
 
     CREATE TABLE IF NOT EXISTS pembelian_item (
-      id            INTEGER PRIMARY KEY AUTOINCREMENT,
-      pembelian_id  INTEGER NOT NULL REFERENCES pembelian(id) ON DELETE CASCADE,
-      produk_id     INTEGER NOT NULL REFERENCES produk(id),
-      qty           INTEGER NOT NULL,
-      qty_diterima  INTEGER NOT NULL DEFAULT 0,
-      harga         INTEGER NOT NULL,
-      subtotal      INTEGER NOT NULL
+      id            integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+      pembelian_id  integer NOT NULL REFERENCES pembelian(id) ON DELETE CASCADE,
+      produk_id     integer NOT NULL REFERENCES produk(id),
+      qty           integer NOT NULL,
+      qty_diterima  integer NOT NULL DEFAULT 0,
+      harga         bigint NOT NULL,
+      subtotal      bigint NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS mutasi_stok (
+      id            integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+      produk_id     integer NOT NULL REFERENCES produk(id),
+      tipe          text NOT NULL CHECK (tipe IN ('masuk','keluar','adjustment')),
+      qty           integer NOT NULL,
+      stok_sebelum  integer NOT NULL,
+      stok_sesudah  integer NOT NULL,
+      ref_tipe      text,
+      ref_id        integer,
+      catatan       text,
+      oleh          integer REFERENCES pengguna(id),
+      waktu         timestamptz NOT NULL DEFAULT now()
     );
 
     CREATE TABLE IF NOT EXISTS pengiriman (
-      id            INTEGER PRIMARY KEY AUTOINCREMENT,
-      nomor         TEXT NOT NULL UNIQUE,
-      pesanan_id    INTEGER NOT NULL REFERENCES pesanan(id),
-      driver_id     INTEGER REFERENCES karyawan(id),
-      status        TEXT NOT NULL DEFAULT 'ditugaskan'
+      id            integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+      nomor         text NOT NULL UNIQUE,
+      pesanan_id    integer NOT NULL REFERENCES pesanan(id),
+      driver_id     integer REFERENCES karyawan(id),
+      status        text NOT NULL DEFAULT 'ditugaskan'
                     CHECK (status IN ('ditugaskan','berangkat','sampai','bongkar','diterima','selesai','gagal')),
-      dimulai_pada  TEXT,
-      selesai_pada  TEXT,
-      penerima      TEXT,
-      foto_url      TEXT,
-      ttd_url       TEXT,
-      lat           REAL,
-      lng           REAL,
-      catatan       TEXT,
-      dibuat_pada   TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      dimulai_pada  timestamptz,
+      selesai_pada  timestamptz,
+      penerima      text,
+      foto_url      text,
+      ttd_url       text,
+      lat           double precision,
+      lng           double precision,
+      catatan       text,
+      dibuat_pada   timestamptz NOT NULL DEFAULT now()
     );
 
     CREATE TABLE IF NOT EXISTS aktivitas (
-      id            INTEGER PRIMARY KEY AUTOINCREMENT,
-      karyawan_id   INTEGER NOT NULL REFERENCES karyawan(id),
-      jenis         TEXT NOT NULL,
-      waktu         TEXT NOT NULL DEFAULT (datetime('now','localtime')),
-      lat           REAL,
-      lng           REAL,
-      foto_url      TEXT,
-      pesanan_id    INTEGER REFERENCES pesanan(id),
-      pengiriman_id INTEGER REFERENCES pengiriman(id),
-      catatan       TEXT
+      id            integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+      karyawan_id   integer NOT NULL REFERENCES karyawan(id),
+      jenis         text NOT NULL,
+      waktu         timestamptz NOT NULL DEFAULT now(),
+      lat           double precision,
+      lng           double precision,
+      foto_url      text,
+      pesanan_id    integer REFERENCES pesanan(id),
+      pengiriman_id integer REFERENCES pengiriman(id),
+      catatan       text
     );
 
     CREATE TABLE IF NOT EXISTS absensi (
-      id            INTEGER PRIMARY KEY AUTOINCREMENT,
-      karyawan_id   INTEGER NOT NULL REFERENCES karyawan(id),
-      tanggal       TEXT NOT NULL,
-      jam_masuk     TEXT,
-      lat_masuk     REAL,
-      lng_masuk     REAL,
-      foto_masuk    TEXT,
-      jarak_masuk_m INTEGER,
-      jam_pulang    TEXT,
-      lat_pulang    REAL,
-      lng_pulang    REAL,
-      foto_pulang   TEXT,
-      jarak_pulang_m INTEGER,
-      status        TEXT NOT NULL DEFAULT 'hadir' CHECK (status IN ('hadir','terlambat','izin','sakit','alpha')),
+      id             integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+      karyawan_id    integer NOT NULL REFERENCES karyawan(id),
+      tanggal        date NOT NULL,
+      jam_masuk      time,
+      lat_masuk      double precision,
+      lng_masuk      double precision,
+      foto_masuk     text,
+      jarak_masuk_m  integer,
+      jam_pulang     time,
+      lat_pulang     double precision,
+      lng_pulang     double precision,
+      foto_pulang    text,
+      jarak_pulang_m integer,
+      status         text NOT NULL DEFAULT 'hadir' CHECK (status IN ('hadir','terlambat','izin','sakit','alpha')),
       UNIQUE (karyawan_id, tanggal)
     );
 
     CREATE TABLE IF NOT EXISTS audit_log (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id     INTEGER REFERENCES pengguna(id),
-      nama_user   TEXT,
-      aksi        TEXT NOT NULL,
-      entitas     TEXT NOT NULL,
-      entitas_id  INTEGER,
-      ringkasan   TEXT,
-      nilai_lama  TEXT,
-      nilai_baru  TEXT,
-      waktu       TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      id          integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+      user_id     integer REFERENCES pengguna(id),
+      nama_user   text,
+      aksi        text NOT NULL,
+      entitas     text NOT NULL,
+      entitas_id  integer,
+      ringkasan   text,
+      nilai_lama  text,
+      nilai_baru  text,
+      waktu       timestamptz NOT NULL DEFAULT now()
     );
 
     CREATE TABLE IF NOT EXISTS pengaturan (
-      kunci TEXT PRIMARY KEY,
-      nilai TEXT NOT NULL
+      kunci text PRIMARY KEY,
+      nilai text NOT NULL
     );
 
     CREATE INDEX IF NOT EXISTS idx_pesanan_tanggal   ON pesanan(tanggal);
@@ -248,13 +326,14 @@ export function initDb() {
 
 /** Pengaturan disimpan sebagai pasangan kunci-nilai agar owner bisa mengubah
     radius absensi atau hari cakupan kulakan tanpa rilis ulang. */
-export function ambilPengaturan(kunci: string, bawaan: string): string {
-  const baris = db.prepare('SELECT nilai FROM pengaturan WHERE kunci = ?').get(kunci) as { nilai: string } | undefined;
+export async function ambilPengaturan(kunci: string, bawaan: string): Promise<string> {
+  const baris = await db.satu<{ nilai: string }>('SELECT nilai FROM pengaturan WHERE kunci = $1', [kunci]);
   return baris?.nilai ?? bawaan;
 }
 
-export function simpanPengaturan(kunci: string, nilai: string) {
-  db.prepare(
-    'INSERT INTO pengaturan (kunci, nilai) VALUES (?, ?) ON CONFLICT(kunci) DO UPDATE SET nilai = excluded.nilai'
-  ).run(kunci, nilai);
+export async function simpanPengaturan(kunci: string, nilai: string, k: Kueri = db) {
+  await k.jalankan(
+    'INSERT INTO pengaturan (kunci, nilai) VALUES ($1, $2) ON CONFLICT (kunci) DO UPDATE SET nilai = excluded.nilai',
+    [kunci, nilai]
+  );
 }

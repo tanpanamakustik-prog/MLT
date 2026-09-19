@@ -3,7 +3,7 @@ import { JudulHalaman } from '../components/layout/AppShell';
 import { Galat, Kartu, Kosong, Medan, Memuat, Pilihan, Tabel, Td, Th, RangkaTabel } from '../components/ui/Dasar';
 import { useApi } from '../lib/useApi';
 import { kueri } from '../lib/api';
-import { hariIniISO, waktu } from '../lib/format';
+import { hariIniISO, waktu, fotoKecil } from '../lib/format';
 import { useAuth } from '../context/AuthContext';
 
 const LABEL: Record<string, string> = {
@@ -83,7 +83,15 @@ export default function Aktivitas() {
                   <Td>
                     {a.foto_url ? (
                       <a href={a.foto_url} target="_blank" rel="noreferrer">
-                        <img src={a.foto_url} alt="Foto aktivitas" className="h-9 w-9 rounded-md border border-line object-cover" />
+                        <img
+                          src={fotoKecil(a.foto_url)}
+                          alt="Foto aktivitas"
+                          loading="lazy"
+                          onError={(e) => {
+                            e.currentTarget.src = a.foto_url;
+                          }}
+                          className="h-9 w-9 rounded-md border border-line object-cover"
+                        />
                       </a>
                     ) : (
                       <span className="text-ink-3">—</span>

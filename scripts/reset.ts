@@ -13,10 +13,9 @@
  */
 import 'dotenv/config';
 import crypto from 'crypto';
-import { db, initDb, simpanPengaturan } from '../backend/db.js';
+import { db, initDb, pool, transaksi } from '../backend/db.js';
 import { hashSandi } from '../backend/auth.js';
 
-/* Urutan penting: tabel anak lebih dulu, karena foreign key menyala. */
 const TABEL = [
   'audit_log', 'aktivitas', 'absensi', 'pengiriman',
   'pesanan_item', 'pesanan', 'pembelian_item', 'pembelian',
@@ -29,11 +28,12 @@ function argumen(nama: string): string | undefined {
   return i >= 0 ? process.argv[i + 1] : undefined;
 }
 
-initDb();
+await initDb();
 
-const jumlah = Object.fromEntries(
-  TABEL.map((t) => [t, (db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get() as any).n as number])
-);
+const jumlah: Record<string, number> = {};
+for (const t of TABEL) {
+  jumlah[t] = Number((await db.satu<{ n: string }>(`SELECT COUNT(*) AS n FROM ${t}`))!.n);
+}
 const total = Object.values(jumlah).reduce((a, b) => a + b, 0);
 
 console.log('Isi database saat ini:');
@@ -52,6 +52,7 @@ diinginkan:
 
   npm run reset -- --ya
 `);
+  await pool.end();
   process.exit(1);
 }
 
@@ -63,40 +64,37 @@ const nama = argumen('nama') ?? 'Owner';
 const sandiDiberikan = argumen('sandi');
 const sandi = sandiDiberikan ?? crypto.randomBytes(9).toString('base64url');
 
-/* Kunci asing dimatikan di luar transaksi, bukan di dalamnya: SQLite
-   mengabaikan pragma ini selama transaksi berjalan, sehingga menaruhnya di
-   dalam db.transaction() membuatnya tidak berpengaruh sama sekali dan
-   penghapusan gagal di tabel pertama yang masih ditunjuk tabel lain. */
-db.pragma('foreign_keys = OFF');
-
-const kosongkan = db.transaction(() => {
-  for (const t of TABEL) db.prepare(`DELETE FROM ${t}`).run();
-  db.prepare(`DELETE FROM sqlite_sequence`).run();
+await transaksi(async (k) => {
+  /* TRUNCATE ... CASCADE mengosongkan seluruh tabel sekaligus dan mengembalikan
+     penghitung identity ke satu, sehingga nomor dokumen mulai dari awal lagi.
+     DELETE satu per satu akan tersandung kunci asing antar tabel. */
+  await k.jalankan(`TRUNCATE ${TABEL.join(', ')} RESTART IDENTITY CASCADE`);
 
   /* Pengaturan bukan data contoh melainkan konfigurasi; nilai bawaannya ditulis
      ulang supaya absensi dan saran kulakan tetap punya angka untuk dipakai. */
-  simpanPengaturan('nama_usaha', argumen('usaha') ?? 'MLT — Mas Lukman Telur');
-  simpanPengaturan('absensi_lat', process.env.ABSENSI_LAT ?? '-7.797068');
-  simpanPengaturan('absensi_lng', process.env.ABSENSI_LNG ?? '110.370529');
-  simpanPengaturan('absensi_radius_m', process.env.ABSENSI_RADIUS_M ?? '150');
-  simpanPengaturan('absensi_jam_masuk', '08:00:00');
-  simpanPengaturan('kulakan_hari_riwayat', '30');
-  simpanPengaturan('kulakan_hari_cakupan', '7');
+  const bawaan: Array<[string, string]> = [
+    ['nama_usaha', argumen('usaha') ?? 'MLT — Mas Lukman Telur'],
+    ['absensi_lat', process.env.ABSENSI_LAT ?? '-7.797068'],
+    ['absensi_lng', process.env.ABSENSI_LNG ?? '110.370529'],
+    ['absensi_radius_m', process.env.ABSENSI_RADIUS_M ?? '150'],
+    ['absensi_jam_masuk', '08:00:00'],
+    ['kulakan_hari_riwayat', '30'],
+    ['kulakan_hari_cakupan', '7'],
+  ];
+  for (const [kunci, nilai] of bawaan) {
+    await k.jalankan('INSERT INTO pengaturan (kunci, nilai) VALUES ($1, $2)', [kunci, nilai]);
+  }
 
-  db.prepare('INSERT INTO pengguna (username, nama, kata_sandi, peran) VALUES (?, ?, ?, ?)')
-    .run(username, nama, hashSandi(sandi), 'owner');
+  await k.jalankan(
+    'INSERT INTO pengguna (username, nama, kata_sandi, peran) VALUES ($1, $2, $3, $4)',
+    [username, nama, hashSandi(sandi), 'owner']
+  );
 
-  db.prepare(
+  await k.jalankan(
     `INSERT INTO audit_log (nama_user, aksi, entitas, ringkasan)
      VALUES ('sistem', 'reset', 'database', 'Database dikosongkan dan akun owner dibuat ulang.')`
-  ).run();
+  );
 });
-
-kosongkan();
-db.pragma('foreign_keys = ON');
-/* VACUUM tidak bisa berada di dalam transaksi; dijalankan setelahnya supaya
-   berkas sqlite menyusut dan tidak menyisakan ruang bekas data contoh. */
-db.exec('VACUUM');
 
 console.log(`
 Database dikosongkan.
@@ -115,3 +113,5 @@ Langkah berikutnya
   3. Tambahkan karyawan, lalu buat akun mereka dengan:
        npm run akun -- --username budi --nama "Budi" --peran gudang
 `);
+
+await pool.end();

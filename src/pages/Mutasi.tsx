@@ -34,7 +34,7 @@ export default function Mutasi() {
 
   return (
     <>
-      <JudulHalaman judul="Mutasi stok" deskripsi="Kartu stok per produk: stok awal, seluruh pergerakan, stok akhir" />
+      <JudulHalaman judul="Mutasi stok" deskripsi="Kartu stok per produk. Diurutkan menurut urutan pencatatan, terbaru lebih dulu." />
 
       <div className="mb-3 flex flex-wrap items-end gap-2">
         <Pilihan aria-label="Produk" value={produkId} onChange={(e) => setProdukId(e.target.value)} className="w-[260px]">
@@ -70,8 +70,17 @@ export default function Mutasi() {
             ))}
           </div>
 
+          {data.jumlah_mutasi > data.mutasi.length && (
+            <p className="border-b border-line px-4 py-2 text-mini text-ink-3">
+              Menampilkan {angka(data.mutasi.length)} pergerakan terbaru dari {angka(data.jumlah_mutasi)} pada rentang ini.
+              Ringkasan di atas dihitung dari seluruhnya.
+            </p>
+          )}
           {data.mutasi.length === 0 ? (
-            <Kosong pesan="Tidak ada pergerakan stok pada rentang ini." />
+            <Kosong
+              judul="Tidak ada pergerakan"
+              pesan="Belum ada stok masuk, keluar, atau penyesuaian untuk produk ini pada rentang tanggal yang dipilih."
+            />
           ) : (
             <Tabel>
               <thead>

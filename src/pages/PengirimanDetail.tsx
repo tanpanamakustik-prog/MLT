@@ -7,7 +7,7 @@ import { AmbilFoto } from '../components/common/AmbilFoto';
 import { useApi } from '../lib/useApi';
 import { api, GalatApi } from '../lib/api';
 import { angka, rupiah, waktu } from '../lib/format';
-import { ambilLokasi } from '../lib/perangkat';
+import { ambilLokasi, type Foto } from '../lib/perangkat';
 import { useAuth } from '../context/AuthContext';
 import { LANGKAH, nadaKirim } from './Pengiriman';
 
@@ -25,7 +25,7 @@ export default function PengirimanDetail() {
   const { pengguna } = useAuth();
   const { data, memuat, galat, muatUlang } = useApi<any>(`/operasional/pengiriman/${id}`);
 
-  const [foto, setFoto] = useState<string | null>(null);
+  const [foto, setFoto] = useState<Foto | null>(null);
   const [penerima, setPenerima] = useState('');
   const [galatAksi, setGalatAksi] = useState<string | null>(null);
   const [sibuk, setSibuk] = useState(false);

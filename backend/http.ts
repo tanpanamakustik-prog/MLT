@@ -9,7 +9,7 @@ export class GalatPermintaan extends Error {
 }
 
 /** Membungkus handler agar galat yang dilempar tidak menggantung permintaan. */
-export function bungkus(fn: (req: Request, res: Response) => unknown) {
+export function bungkus(fn: (req: Request, res: Response) => unknown | Promise<unknown>) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
       await fn(req, res);

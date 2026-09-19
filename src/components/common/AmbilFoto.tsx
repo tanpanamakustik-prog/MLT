@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Camera, RotateCcw } from 'lucide-react';
 import { Tombol } from '../ui/Dasar';
-import { kecilkanFoto } from '../../lib/perangkat';
+import { siapkanFoto, type Foto } from '../../lib/perangkat';
 
 /**
  * Pengambil foto lewat kamera perangkat.
@@ -18,8 +18,8 @@ export function AmbilFoto({
 }: {
   label: string;
   kameraDepan?: boolean;
-  nilai: string | null;
-  ubah: (dataUrl: string | null) => void;
+  nilai: Foto | null;
+  ubah: (foto: Foto | null) => void;
 }) {
   const masukan = useRef<HTMLInputElement>(null);
   const [sibuk, setSibuk] = useState(false);
@@ -38,7 +38,7 @@ export function AmbilFoto({
           if (!berkas) return;
           setSibuk(true);
           try {
-            ubah(await kecilkanFoto(berkas));
+            ubah(await siapkanFoto(berkas));
           } finally {
             setSibuk(false);
             e.target.value = '';
@@ -47,7 +47,7 @@ export function AmbilFoto({
       />
       {nilai ? (
         <div className="flex items-start gap-3">
-          <img src={nilai} alt={label} className="h-28 w-28 rounded-lg border border-line object-cover" />
+          <img src={nilai.penuh} alt={label} className="h-28 w-28 rounded-lg border border-line object-cover" />
           <Tombol onClick={() => ubah(null)}>
             <RotateCcw size={14} /> Ambil ulang
           </Tombol>
