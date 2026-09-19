@@ -4,7 +4,7 @@ import { JudulHalaman } from '../components/layout/AppShell';
 import { Galat, Kartu, Kosong, Lencana, Medan, Memuat, Tabel, Td, Th, Tombol, RangkaTabel } from '../components/ui/Dasar';
 import { KartuKpi } from '../components/ui/Kpi';
 import { useApi } from '../lib/useApi';
-import { kueri } from '../lib/api';
+import { kueri, urlBerkas } from '../lib/api';
 import { angka, hariIniISO, jam, tanggal, fotoKecil } from '../lib/format';
 import { eksporExcel } from '../components/common/ekspor';
 
@@ -89,7 +89,7 @@ export default function Absensi() {
                   </Td>
                   <Td>
                     {a.foto_masuk ? (
-                      <a href={a.foto_masuk} target="_blank" rel="noreferrer">
+                      <a href={urlBerkas(a.foto_masuk)} target="_blank" rel="noreferrer">
                         <img
                           src={fotoKecil(a.foto_masuk)}
                           alt={`Selfie ${a.nama}`}
@@ -98,7 +98,7 @@ export default function Absensi() {
                             /* Foto yang tersimpan sebelum versi kecil ada tidak punya
                                berkasnya; jatuh kembali ke versi penuh alih-alih
                                menampilkan kotak rusak. */
-                            e.currentTarget.src = a.foto_masuk;
+                            e.currentTarget.src = urlBerkas(a.foto_masuk) ?? "";
                           }}
                           className="h-9 w-9 rounded-md border border-line object-cover"
                         />

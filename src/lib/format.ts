@@ -50,6 +50,8 @@ export const jam = (t: string | null | undefined): string => (t ? t.slice(0, 5) 
 
 export const hariIniISO = (): string => new Date().toLocaleDateString('sv-SE');
 
+import { urlBerkas } from './api';
+
 /**
  * URL versi kecil sebuah foto.
  *
@@ -59,4 +61,4 @@ export const hariIniISO = (): string => new Date().toLocaleDateString('sv-SE');
  * peramban akan jatuh kembali ke versi penuh lewat onError di komponennya.
  */
 export const fotoKecil = (url: string | null | undefined): string | undefined =>
-  url ? url.replace(/(\.[a-z]+)$/i, '-kecil$1') : undefined;
+  url ? urlBerkas(url.replace(/(\.[a-z]+)$/i, '-kecil$1')) : undefined;

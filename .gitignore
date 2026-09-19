@@ -6,7 +6,13 @@ uploads
 .env
 .DS_Store
 android/app/build
+android/app/release
+android/build
 android/.gradle
+android/.idea
+android/capacitor-cordova-android-plugins
+# Berisi jalur SDK khas mesin masing-masing.
+android/local.properties
 
 # Skill impeccable dipasang ulang dari skills-lock.json; isinya 2 MB dan bukan kode project.
 .agents/

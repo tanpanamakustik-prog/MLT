@@ -5,7 +5,7 @@ import { JudulHalaman } from '../components/layout/AppShell';
 import { Galat, Kartu, KepalaKartu, Kosong, Lencana, Medan, Memuat, Tabel, Td, Th, Tombol } from '../components/ui/Dasar';
 import { AmbilFoto } from '../components/common/AmbilFoto';
 import { useApi } from '../lib/useApi';
-import { api, GalatApi } from '../lib/api';
+import { api, GalatApi, urlBerkas } from '../lib/api';
 import { angka, rupiah, waktu } from '../lib/format';
 import { ambilLokasi, type Foto } from '../lib/perangkat';
 import { useAuth } from '../context/AuthContext';
@@ -128,7 +128,7 @@ export default function PengirimanDetail() {
             {data.foto_url && (
               <div className="px-4 pb-4">
                 <p className="mb-1.5 text-mini font-medium text-ink-2">Bukti penerimaan</p>
-                <img src={data.foto_url} alt="Bukti penerimaan" className="w-full rounded-lg border border-line" />
+                <img src={urlBerkas(data.foto_url)} alt="Bukti penerimaan" className="w-full rounded-lg border border-line" />
               </div>
             )}
           </Kartu>

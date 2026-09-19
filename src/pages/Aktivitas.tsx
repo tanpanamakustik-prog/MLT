@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { JudulHalaman } from '../components/layout/AppShell';
 import { Galat, Kartu, Kosong, Medan, Memuat, Pilihan, Tabel, Td, Th, RangkaTabel } from '../components/ui/Dasar';
 import { useApi } from '../lib/useApi';
-import { kueri } from '../lib/api';
+import { kueri, urlBerkas } from '../lib/api';
 import { hariIniISO, waktu, fotoKecil } from '../lib/format';
 import { useAuth } from '../context/AuthContext';
 
@@ -82,13 +82,13 @@ export default function Aktivitas() {
                   </Td>
                   <Td>
                     {a.foto_url ? (
-                      <a href={a.foto_url} target="_blank" rel="noreferrer">
+                      <a href={urlBerkas(a.foto_url)} target="_blank" rel="noreferrer">
                         <img
                           src={fotoKecil(a.foto_url)}
                           alt="Foto aktivitas"
                           loading="lazy"
                           onError={(e) => {
-                            e.currentTarget.src = a.foto_url;
+                            e.currentTarget.src = urlBerkas(a.foto_url) ?? "";
                           }}
                           className="h-9 w-9 rounded-md border border-line object-cover"
                         />

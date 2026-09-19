@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  HTTP polos hanya diizinkan untuk alamat lokal.
+
+  Membuka cleartext untuk seluruh jaringan (android:usesCleartextTraffic="true")
+  memang membuat build uji langsung jalan, tetapi ikut berlaku di APK produksi —
+  dan sejak itu tidak ada yang memberi tahu bila server produksi diam-diam
+  diakses lewat HTTP. Lalu lintas ke Vercel berjalan di HTTPS dan tidak
+  memerlukan pengecualian apa pun di sini.
+-->
+<network-security-config>
+  <domain-config cleartextTrafficPermitted="true">
+    <!-- Capacitor menyajikan berkas web aplikasi dari sini, di dalam ponsel. -->
+    <domain includeSubdomains="true">localhost</domain>
+    <!-- Alamat mesin pengembang dilihat dari emulator Android. -->
+    <domain includeSubdomains="true">10.0.2.2</domain>
+    <!-- Laptop pengembang di jaringan rumah. Hapus baris ini untuk rilis. -->
+    <domain includeSubdomains="true">192.168.1.12</domain>
+  </domain-config>
+  <base-config cleartextTrafficPermitted="false" />
+</network-security-config>

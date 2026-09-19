@@ -1,3 +1,22 @@
+/**
+ * Alamat server API.
+ *
+ * Kosong di web: halaman dan API disajikan dari asal yang sama, jadi jalur
+ * relatif sudah benar. Di APK tidak: Capacitor menyajikan berkas web dari
+ * http://localhost di dalam ponsel, sehingga "/api" menunjuk ke ponsel itu
+ * sendiri dan tidak ada satu pun permintaan yang sampai. Nilainya diisi saat
+ * build lewat VITE_API_BASE.
+ *
+ * Bukan rahasia — ini alamat publik server, bukan kunci. Yang tidak boleh
+ * masuk bundel peramban adalah kunci secret, dan server menolak menyala bila
+ * menemukannya berawalan VITE_.
+ */
+export const AKAR_API = (import.meta.env.VITE_API_BASE ?? '').replace(/\/$/, '');
+
+/** Melengkapi jalur berkas unggahan menjadi URL utuh untuk APK. */
+export const urlBerkas = (jalur: string | null | undefined): string | undefined =>
+  jalur ? (jalur.startsWith('http') ? jalur : AKAR_API + jalur) : undefined;
+
 const KUNCI_TOKEN = 'mlt.token';
 
 export const ambilToken = () => localStorage.getItem(KUNCI_TOKEN);
@@ -21,7 +40,7 @@ export const pasangPenanganSesiBerakhir = (fn: () => void) => {
 
 async function permintaan<T>(metode: string, jalur: string, isi?: unknown): Promise<T> {
   const token = ambilToken();
-  const res = await fetch(`/api${jalur}`, {
+  const res = await fetch(`${AKAR_API}/api${jalur}`, {
     method: metode,
     headers: {
       ...(isi !== undefined ? { 'Content-Type': 'application/json' } : {}),
