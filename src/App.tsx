@@ -1,5 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
+import { diAplikasi } from './lib/api';
+import { KerangkaApk } from './apk/Kerangka';
 import { AppShell } from './components/layout/AppShell';
 import { Kartu, Kosong, Memuat } from './components/ui/Dasar';
 import { useAuth } from './context/AuthContext';
@@ -12,6 +14,20 @@ const LaporanProduk = lazy(() => import('./pages/laporan/Produk'));
 const LaporanKulakan = lazy(() => import('./pages/laporan/Kulakan'));
 const LaporanKaryawan = lazy(() => import('./pages/laporan/Karyawan'));
 const LaporanTahunan = lazy(() => import('./pages/laporan/Tahunan'));
+
+/* Layar khusus APK. Dipisah dari halaman web, bukan dibuat responsif dari
+   halaman yang sama: yang dibutuhkan di lapangan berbeda urutannya, bukan
+   sekadar berbeda lebarnya. Sopir membuka daftar kiriman dan tombol absen;
+   tabel dua belas kolom yang mengecil tidak menjadi layar yang baik hanya
+   karena muat. */
+const BerandaApk = lazy(() => import('./apk/Beranda'));
+const KatalogApk = lazy(() => import('./apk/Katalog'));
+const KeranjangApk = lazy(() => import('./apk/Keranjang'));
+const KirimanApk = lazy(() => import('./apk/Kiriman'));
+const PesananApk = lazy(() => import('./apk/Pesanan'));
+const StokApk = lazy(() => import('./apk/Stok'));
+const KulakanApk = lazy(() => import('./apk/Kulakan'));
+const AkunApk = lazy(() => import('./apk/Akun'));
 
 import Login from './pages/Login';
 import Daftar from './pages/Daftar';
@@ -87,6 +103,8 @@ export default function App() {
     );
   }
 
+  if (diAplikasi()) return <AplikasiPonsel />;
+
   return (
     <AppShell>
       <Suspense fallback={<Memuat tinggi="h-64" />}>
@@ -133,5 +151,47 @@ export default function App() {
       </Routes>
       </Suspense>
     </AppShell>
+  );
+}
+
+
+/**
+ * Susunan rute di dalam APK.
+ *
+ * Beranda berbeda per peran: pembeli mendarat di katalog, sopir di daftar
+ * kiriman, sisanya di ringkasan hari ini. Mendaratkan semuanya di layar yang
+ * sama memaksa empat dari lima peran menekan satu tab lagi sebelum sampai ke
+ * pekerjaannya.
+ */
+function AplikasiPonsel() {
+  const { pengguna, modul } = useAuth();
+  const peran = pengguna!.peran;
+  const beranda = peran === 'buyer' ? <KatalogApk /> : peran === 'driver' ? <KirimanApk /> : <BerandaApk />;
+
+  return (
+    <KerangkaApk>
+      <Suspense fallback={<Memuat tinggi="h-72" />}>
+        <Routes>
+          <Route path="/a" element={beranda} />
+          <Route path="/a/keranjang" element={<Jaga modul="katalog"><KeranjangApk /></Jaga>} />
+          <Route path="/a/pesanan" element={<PesananApk />} />
+          <Route path="/a/pesanan/baru" element={<Jaga modul="penjualan"><PesananBaru /></Jaga>} />
+          <Route path="/a/pesanan/:id" element={<PesananDetail />} />
+          <Route path="/a/kiriman" element={<Jaga modul="pengiriman"><KirimanApk /></Jaga>} />
+          <Route path="/a/kiriman/:id" element={<Jaga modul="pengiriman"><PengirimanDetail /></Jaga>} />
+          <Route path="/a/stok" element={<Jaga modul="inventory"><StokApk /></Jaga>} />
+          <Route path="/a/stok/:id" element={<Jaga modul="inventory"><Mutasi /></Jaga>} />
+          <Route path="/a/opname" element={<Jaga modul="inventory"><Opname /></Jaga>} />
+          <Route path="/a/kulakan" element={<Jaga modul="kulakan"><KulakanApk /></Jaga>} />
+          <Route path="/a/customer" element={<Jaga modul="customer"><Customer /></Jaga>} />
+          <Route path="/a/customer/:id" element={<Jaga modul="customer"><CustomerDetail /></Jaga>} />
+          <Route path="/a/absen" element={<Absen />} />
+          <Route path="/a/aktivitas" element={<Jaga modul="aktivitas"><Aktivitas /></Jaga>} />
+          <Route path="/a/akun" element={<AkunApk />} />
+          {/* Tautan lama dan alamat web apa pun dibawa ke beranda aplikasi. */}
+          <Route path="*" element={<Navigate to="/a" replace />} />
+        </Routes>
+      </Suspense>
+    </KerangkaApk>
   );
 }
