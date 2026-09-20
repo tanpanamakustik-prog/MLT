@@ -312,6 +312,14 @@ export async function initDb() {
       nilai text NOT NULL
     );
 
+    /* Customer yang mendaftar sendiri lewat APK masuk sebagai 'menunggu' dan
+       belum boleh memesan. Distributor mengantar barang ke alamat sungguhan dan
+       kerap memberi tempo; siapa pun yang memasang aplikasi tidak boleh langsung
+       menjadi pelanggan tanpa ada yang memeriksanya lebih dulu. */
+    ALTER TABLE customer DROP CONSTRAINT IF EXISTS customer_status_check;
+    ALTER TABLE customer ADD CONSTRAINT customer_status_check
+      CHECK (status IN ('menunggu','aktif','nonaktif','blokir'));
+
     CREATE INDEX IF NOT EXISTS idx_pesanan_tanggal   ON pesanan(tanggal);
     CREATE INDEX IF NOT EXISTS idx_pesanan_customer  ON pesanan(customer_id);
     CREATE INDEX IF NOT EXISTS idx_item_pesanan      ON pesanan_item(pesanan_id);

@@ -14,6 +14,7 @@ const LaporanKaryawan = lazy(() => import('./pages/laporan/Karyawan'));
 const LaporanTahunan = lazy(() => import('./pages/laporan/Tahunan'));
 
 import Login from './pages/Login';
+import Daftar from './pages/Daftar';
 import Produk from './pages/Produk';
 import Pesanan from './pages/Pesanan';
 import PesananBaru from './pages/PesananBaru';
@@ -75,7 +76,16 @@ export default function App() {
     );
   }
 
-  if (!pengguna) return <Login />;
+  /* Halaman masuk dan daftar punya alamatnya sendiri supaya tombol kembali
+     peramban dan tautan langsung tetap bekerja. */
+  if (!pengguna) {
+    return (
+      <Routes>
+        <Route path="/daftar" element={<Daftar />} />
+        <Route path="*" element={<Login />} />
+      </Routes>
+    );
+  }
 
   return (
     <AppShell>

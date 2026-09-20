@@ -6,9 +6,15 @@ import { Dialog, Galat, Kartu, Kosong, Memuat, Tombol } from '../components/ui/D
 import { useApi } from '../lib/useApi';
 import { api, GalatApi, kueri } from '../lib/api';
 import { angka, rupiah } from '../lib/format';
+import { useAuth } from '../context/AuthContext';
 
 export default function Katalog() {
   const navigasi = useNavigate();
+  const { pengguna } = useAuth();
+  /* Toko yang baru mendaftar boleh melihat harga dan stok, tetapi belum boleh
+     memesan. Dibiarkan memesan lalu ditolak saat checkout, orangnya sudah
+     terlanjur menyusun keranjang dan tidak ada yang menjelaskan kenapa. */
+  const belumTerverifikasi = pengguna?.status_customer === 'menunggu';
   const [cari, setCari] = useState('');
   const { data, memuat, galat } = useApi<any[]>(`/master/produk${kueri({ cari })}`);
 
@@ -60,11 +66,21 @@ export default function Katalog() {
         judul="Katalog"
         deskripsi="Harga sudah termasuk harga jual berlaku"
         aksi={
-          <Tombol varian="utama" disabled={isi.length === 0} onClick={() => setDialogBuka(true)}>
+          <Tombol varian="utama" disabled={isi.length === 0 || belumTerverifikasi} onClick={() => setDialogBuka(true)}>
             <ShoppingCart size={14} /> Keranjang ({isi.length})
           </Tombol>
         }
       />
+
+      {belumTerverifikasi && (
+        <div className="mb-4 rounded-xl border border-warn/40 bg-warn/12 px-4 py-3">
+          <p className="text-kecil font-medium text-ink">Toko Anda sedang diverifikasi</p>
+          <p className="mt-1 text-mini leading-relaxed text-ink-2">
+            Anda sudah bisa melihat katalog dan harga. Pemesanan terbuka setelah admin menghubungi nomor HP
+            yang Anda daftarkan dan mengaktifkan toko Anda.
+          </p>
+        </div>
+      )}
 
       <input
         value={cari}
@@ -101,7 +117,7 @@ export default function Katalog() {
                 <span className="angka min-w-[2.5rem] text-center text-dasar font-medium text-ink">{keranjang[p.id] ?? 0}</span>
                 <button
                   onClick={() => ubahQty(p.id, 1, p.stok)}
-                  disabled={p.stok === 0 || (keranjang[p.id] ?? 0) >= p.stok}
+                  disabled={belumTerverifikasi || p.stok === 0 || (keranjang[p.id] ?? 0) >= p.stok}
                   aria-label={`Tambah ${p.nama}`}
                   className="grid h-9 w-9 place-items-center rounded-lg border border-line text-ink-2 hover:bg-surface-2 disabled:opacity-40"
                 >

@@ -10,6 +10,9 @@ export interface Pengguna {
   peran: Peran;
   karyawan_id: number | null;
   customer_id: number | null;
+  /* Hanya terisi untuk peran buyer. 'menunggu' berarti tokonya belum
+     diverifikasi admin dan pemesanan masih tertutup. */
+  status_customer?: string | null;
 }
 
 interface IsiAuth {

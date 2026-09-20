@@ -111,6 +111,15 @@ rutPenjualan.post(
       const customer = await k.satu<any>('SELECT * FROM customer WHERE id = $1', [customerId]);
       if (!customer) throw new GalatPermintaan('Customer tidak ditemukan.', 404);
       if (customer.status === 'blokir') throw new GalatPermintaan(`Customer ${customer.nama} sedang diblokir.`, 409);
+      if (customer.status === 'menunggu') {
+        throw new GalatPermintaan(
+          `${customer.nama} belum diverifikasi. Admin perlu mengaktifkannya lebih dulu sebelum pesanan bisa dibuat.`,
+          409
+        );
+      }
+      if (customer.status === 'nonaktif') {
+        throw new GalatPermintaan(`Customer ${customer.nama} berstatus nonaktif.`, 409);
+      }
       const salesId = b.sales_id ? Number(b.sales_id) : customer.sales_id ?? pengguna.karyawan_id ?? null;
 
       const baris: Array<{ produk_id: number; qty: number; harga: number; harga_beli: number; subtotal: number }> = [];

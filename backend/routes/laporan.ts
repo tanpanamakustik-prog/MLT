@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from '../db.js';
-import { wajibMasuk, wajibPeran } from '../auth.js';
+import { STAF, wajibMasuk, wajibPeran } from '../auth.js';
 import { statusStok } from '../stok.js';
 import { hitungSaranKulakan } from '../kulakan-cerdas.js';
 import { hariIni, periodeSebelumnya, rentangPeriode } from '../util.js';
@@ -75,6 +75,7 @@ const tumbuh = (a: number, b: number) => (b > 0 ? Math.round(((a - b) / b) * 100
 
 rutLaporan.get(
   '/dashboard',
+  wajibPeran(...STAF),
   bungkus(async (req, res) => {
     const p = bacaPeriode(req.query);
 
@@ -178,6 +179,7 @@ rutLaporan.get(
 
 rutLaporan.get(
   '/ringkas',
+  wajibPeran('owner', 'admin'),
   bungkus(async (req, res) => {
     const p = bacaPeriode(req.query);
     const [jual, beli, item, stok, karyawan, pengiriman] = await Promise.all([
@@ -222,6 +224,7 @@ rutLaporan.get(
 
 rutLaporan.get(
   '/produk',
+  wajibPeran('owner', 'admin'),
   bungkus(async (req, res) => {
     const p = bacaPeriode(req.query);
     const baris = await db.banyak<any>(
@@ -308,6 +311,7 @@ rutLaporan.get(
 
 rutLaporan.get(
   '/kulakan',
+  wajibPeran('owner', 'admin'),
   bungkus(async (req, res) => {
     const p = bacaPeriode(req.query);
     const baris = await db.banyak<any>(
@@ -341,6 +345,7 @@ rutLaporan.get(
 /** Dua belas bulan dalam satu tahun, termasuk bulan yang tidak ada transaksinya. */
 rutLaporan.get(
   '/tren-bulanan',
+  wajibPeran('owner', 'admin'),
   bungkus(async (req, res) => {
     const tahun = Math.round(angka(req.query.tahun, new Date().getFullYear()));
     const [jualBulan, beliBulan] = await Promise.all([
@@ -389,6 +394,7 @@ rutLaporan.get(
  */
 rutLaporan.get(
   '/yoy',
+  wajibPeran('owner', 'admin'),
   bungkus(async (req, res) => {
     const tahun = Math.round(angka(req.query.tahun, new Date().getFullYear()));
     const tahunBerjalan = tahun === new Date().getFullYear();

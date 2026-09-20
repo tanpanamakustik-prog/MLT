@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db, transaksi } from '../db.js';
-import { wajibMasuk, wajibPeran } from '../auth.js';
+import { STAF, wajibMasuk, wajibPeran } from '../auth.js';
 import { catatAudit } from '../audit.js';
 import { statusStok, ubahStok } from '../stok.js';
 import { angka, bungkus, GalatPermintaan } from '../http.js';
@@ -11,6 +11,7 @@ rutInventory.use(wajibMasuk);
 /** Daftar stok dengan status dan nilai persediaan per produk. */
 rutInventory.get(
   '/stok',
+  wajibPeran(...STAF),
   bungkus(async (req, res) => {
     const status = String(req.query.status ?? '');
     const baris = await db.banyak<any>(
@@ -45,6 +46,7 @@ rutInventory.get(
  */
 rutInventory.get(
   '/mutasi/:produkId',
+  wajibPeran(...STAF),
   bungkus(async (req, res) => {
     const produkId = Number(req.params.produkId);
     const dari = String(req.query.dari ?? '1900-01-01');

@@ -11,11 +11,43 @@
  * masuk bundel peramban adalah kunci secret, dan server menolak menyala bila
  * menemukannya berawalan VITE_.
  */
-export const AKAR_API = (import.meta.env.VITE_API_BASE ?? '').replace(/\/$/, '');
+const KUNCI_SERVER = 'mlt.server';
+
+/* Alamat yang ditanam saat build. Dipakai sebagai nilai awal, bukan sebagai
+   keputusan akhir. */
+const BAWAAN_API = (import.meta.env.VITE_API_BASE ?? '').replace(/\/$/, '');
+
+/**
+ * Alamat server yang sedang dipakai.
+ *
+ * Urutannya: yang disimpan pengguna, lalu yang ditanam saat build.
+ *
+ * Bisa diubah dari dalam aplikasi karena alamat yang ditanam saat build tidak
+ * bertahan: router membagikan alamat lewat DHCP dan nomornya berganti sendiri,
+ * lalu APK di ponsel semua orang menunjuk ke alamat yang sudah dipakai
+ * perangkat lain. Membangun ulang APK setiap kali itu terjadi bukan jawaban.
+ */
+export const ambilAkarApi = (): string => {
+  try {
+    return (localStorage.getItem(KUNCI_SERVER) ?? BAWAAN_API).replace(/\/$/, '');
+  } catch {
+    return BAWAAN_API;
+  }
+};
+
+export const simpanAkarApi = (alamat: string) => {
+  const bersih = alamat.trim().replace(/\/$/, '');
+  if (bersih) localStorage.setItem(KUNCI_SERVER, bersih);
+  else localStorage.removeItem(KUNCI_SERVER);
+};
+
+/** Aplikasi berjalan di dalam APK, bukan di peramban biasa. */
+export const diAplikasi = (): boolean =>
+  typeof window !== 'undefined' && !!(window as any).Capacitor;
 
 /** Melengkapi jalur berkas unggahan menjadi URL utuh untuk APK. */
 export const urlBerkas = (jalur: string | null | undefined): string | undefined =>
-  jalur ? (jalur.startsWith('http') ? jalur : AKAR_API + jalur) : undefined;
+  jalur ? (jalur.startsWith('http') ? jalur : ambilAkarApi() + jalur) : undefined;
 
 const KUNCI_TOKEN = 'mlt.token';
 
@@ -38,16 +70,36 @@ export const pasangPenanganSesiBerakhir = (fn: () => void) => {
   saatSesiBerakhir = fn;
 };
 
+export class GalatJaringan extends Error {
+  constructor(public alamat: string) {
+    /* Menyebut alamat yang dicoba, bukan sekadar "gagal": penyebab tersering
+       adalah alamat yang sudah tidak berlaku, dan tanpa disebut tidak ada yang
+       bisa menebaknya dari layar ponsel. */
+    super(
+      alamat
+        ? `Tidak dapat menghubungi server di ${alamat}. Periksa apakah alamatnya masih benar dan ponsel berada di jaringan yang sama.`
+        : 'Tidak dapat menghubungi server.'
+    );
+    this.name = 'GalatJaringan';
+  }
+}
+
 async function permintaan<T>(metode: string, jalur: string, isi?: unknown): Promise<T> {
   const token = ambilToken();
-  const res = await fetch(`${AKAR_API}/api${jalur}`, {
-    method: metode,
-    headers: {
-      ...(isi !== undefined ? { 'Content-Type': 'application/json' } : {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: isi !== undefined ? JSON.stringify(isi) : undefined,
-  });
+  const akar = ambilAkarApi();
+  let res: Response;
+  try {
+    res = await fetch(`${akar}/api${jalur}`, {
+      method: metode,
+      headers: {
+        ...(isi !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: isi !== undefined ? JSON.stringify(isi) : undefined,
+    });
+  } catch {
+    throw new GalatJaringan(akar);
+  }
 
   if (res.status === 401) {
     hapusToken();

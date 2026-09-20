@@ -94,6 +94,22 @@ rutMaster.put(
 const KOLOM_PRODUK = `p.id, p.sku, p.nama, p.satuan, p.kategori_id, p.supplier_id,
   p.harga_beli, p.harga_jual, p.stok, p.stok_minimum, p.safety_stock, p.kelipatan_beli, p.aktif`;
 
+/**
+ * Menyiapkan satu baris produk untuk peran yang memintanya.
+ *
+ * Katalog memakai endpoint yang sama dengan halaman produk internal, dan buyer
+ * memanggilnya dari APK. Harga beli, supplier, dan ambang stok adalah angka
+ * dagang: dikirim ke pembeli, ia tahu persis berapa margin yang diambil dan
+ * dari siapa barangnya datang. Dibuang di sini, bukan disembunyikan di layar.
+ */
+function rapikanProduk(p: any, peran: string) {
+  const dasar = { ...p, status_stok: statusStok(p.stok, p.stok_minimum) };
+  if (peran !== 'buyer') return dasar;
+
+  const { harga_beli, supplier, supplier_id, safety_stock, stok_minimum, kelipatan_beli, ...umum } = dasar;
+  return umum;
+}
+
 rutMaster.get(
   '/produk',
   bungkus(async (req, res) => {
@@ -114,7 +130,7 @@ rutMaster.get(
       [semua, cari, kategoriId, BATAS(req.query.batas, 300)]
     );
 
-    res.json(baris.map((p) => ({ ...p, status_stok: statusStok(p.stok, p.stok_minimum) })));
+    res.json(baris.map((p) => rapikanProduk(p, req.pengguna!.peran)));
   })
 );
 
@@ -128,7 +144,7 @@ rutMaster.get(
       [Number(req.params.id)]
     );
     if (!p) throw new GalatPermintaan('Produk tidak ditemukan.', 404);
-    res.json({ ...p, status_stok: statusStok(p.stok, p.stok_minimum) });
+    res.json(rapikanProduk(p, req.pengguna!.peran));
   })
 );
 
@@ -286,7 +302,7 @@ function bacaCustomer(b: any) {
     ['toko', 'grosir', 'retail', 'horeka'].includes(b.tipe) ? b.tipe : 'toko',
     b.sales_id ? Number(b.sales_id) : null,
     Math.round(angka(b.limit_kredit)),
-    ['aktif', 'nonaktif', 'blokir'].includes(b.status) ? b.status : 'aktif',
+    ['menunggu', 'aktif', 'nonaktif', 'blokir'].includes(b.status) ? b.status : 'aktif',
     b.lat != null ? Number(b.lat) : null,
     b.lng != null ? Number(b.lng) : null,
   ];

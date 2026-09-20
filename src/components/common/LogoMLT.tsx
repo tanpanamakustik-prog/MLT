@@ -10,14 +10,14 @@
  * Dibuat dari goresan lurus, bukan huruf dari font sistem, supaya bentuknya
  * tetap sama di perangkat mana pun dan tetap terbaca sampai ukuran 24px.
  */
-/* Kotak huruf 10..38 pada kanvas 48, dengan rim 5,2 yang melebar 2,6 ke tiap
-   sisi: menyisakan sekitar 7 satuan napas ke tepi ubin. Digambar sampai tepi,
-   monogramnya terasa sesak justru pada ukuran kecil, saat ia paling sering
-   dilihat. */
+/* Jarak antar huruf harus melebihi lebar rim penuh, bukan sekadar terlihat
+   renggang di sketsa: rim 5,2 melebar 2,6 ke tiap sisi, jadi dua goresan yang
+   pusatnya berjarak 3 akan saling tumpang tindih dan "ML" membaur jadi satu
+   blok. Pusat goresan kini berjarak 5,5. */
 const GORESAN = [
-  { d: 'M 10 33 L 10 17 L 14 25.5 L 18 17 L 18 33', warna: 'var(--dh-logo-m)' },
-  { d: 'M 21 17 L 21 33 L 27.5 33', warna: 'var(--dh-logo-l)' },
-  { d: 'M 30.5 17 L 38 17 M 34.25 17 L 34.25 33', warna: 'var(--dh-logo-t)' },
+  { d: 'M 7.5 33 L 7.5 17 L 11.5 25.5 L 15.5 17 L 15.5 33', warna: 'var(--dh-logo-m)' },
+  { d: 'M 21 17 L 21 33 L 27 33', warna: 'var(--dh-logo-l)' },
+  { d: 'M 32 17 L 40 17 M 36 17 L 36 33', warna: 'var(--dh-logo-t)' },
 ];
 
 export function LogoMLT({ ukuran = 32, className }: { ukuran?: number; className?: string }) {

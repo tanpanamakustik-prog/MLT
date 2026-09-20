@@ -40,7 +40,7 @@ export default function Customer() {
     <>
       <JudulHalaman
         judul="Customer"
-        deskripsi="Toko, grosir, dan pelanggan horeka"
+        deskripsi="Toko, grosir, dan pelanggan horeka. Yang mendaftar sendiri lewat aplikasi masuk sebagai perlu verifikasi."
         aksi={
           boleh('owner', 'admin', 'sales') && (
             <Tombol varian="utama" onClick={() => { setForm({ ...KOSONG }); setGalatForm(null); }}>
@@ -74,6 +74,7 @@ export default function Customer() {
               <tr>
                 <Th>Customer</Th>
                 <Th>Tipe</Th>
+                <Th>Status</Th>
                 <Th>Sales</Th>
                 <Th kanan>Order</Th>
                 <Th kanan>Total belanja</Th>
@@ -91,7 +92,16 @@ export default function Customer() {
                     </Link>
                     <span className="block text-mikro text-ink-3">{c.kode ?? '—'} · {c.no_hp ?? 'tanpa nomor'}</span>
                   </Td>
-                  <Td><Lencana nada={c.status === 'aktif' ? 'netral' : 'kritis'}>{c.tipe}</Lencana></Td>
+                  <Td><Lencana nada="netral">{c.tipe}</Lencana></Td>
+                  <Td>
+                    <Lencana
+                      nada={
+                        c.status === 'aktif' ? 'baik' : c.status === 'menunggu' ? 'awas' : 'kritis'
+                      }
+                    >
+                      {c.status === 'menunggu' ? 'perlu verifikasi' : c.status}
+                    </Lencana>
+                  </Td>
                   <Td>{c.sales ?? '—'}</Td>
                   <Td kanan>{angka(c.jumlah_order)}</Td>
                   <Td kanan>{rupiah(c.total_belanja)}</Td>
@@ -146,7 +156,7 @@ export default function Customer() {
               petunjuk="0 berarti tanpa batas. Pesanan yang melampaui limit ditolak."
             />
             <Pilihan label="Status" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-              {['aktif', 'nonaktif', 'blokir'].map((s) => <option key={s} value={s}>{s}</option>)}
+              {['menunggu', 'aktif', 'nonaktif', 'blokir'].map((s) => <option key={s} value={s}>{s}</option>)}
             </Pilihan>
             {galatForm && <div className="sm:col-span-2"><Galat pesan={galatForm} /></div>}
           </div>

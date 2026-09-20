@@ -3,11 +3,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
   <rect width="48" height="48" rx="11" fill="#faf7f0"/>
   <g fill="none" stroke-linecap="square" stroke-linejoin="miter">
-    <path d="M 10 33 L 10 17 L 14 25.5 L 18 17 L 18 33" stroke="#1a1815" stroke-width="5.2"/>
-    <path d="M 21 17 L 21 33 L 27.5 33" stroke="#1a1815" stroke-width="5.2"/>
-    <path d="M 30.5 17 L 38 17 M 34.25 17 L 34.25 33" stroke="#1a1815" stroke-width="5.2"/>
-    <path d="M 10 33 L 10 17 L 14 25.5 L 18 17 L 18 33" stroke="#c4141c" stroke-width="2.9"/>
-    <path d="M 21 17 L 21 33 L 27.5 33" stroke="#f5b324" stroke-width="2.9"/>
-    <path d="M 30.5 17 L 38 17 M 34.25 17 L 34.25 33" stroke="#1a1815" stroke-width="2.9"/>
+    <path d="M 7.5 33 L 7.5 17 L 11.5 25.5 L 15.5 17 L 15.5 33" stroke="#1a1815" stroke-width="5.2"/>
+    <path d="M 21 17 L 21 33 L 27 33" stroke="#1a1815" stroke-width="5.2"/>
+    <path d="M 32 17 L 40 17 M 36 17 L 36 33" stroke="#1a1815" stroke-width="5.2"/>
+    <path d="M 7.5 33 L 7.5 17 L 11.5 25.5 L 15.5 17 L 15.5 33" stroke="#c4141c" stroke-width="2.9"/>
+    <path d="M 21 17 L 21 33 L 27 33" stroke="#f5b324" stroke-width="2.9"/>
+    <path d="M 32 17 L 40 17 M 36 17 L 36 33" stroke="#1a1815" stroke-width="2.9"/>
   </g>
 </svg>

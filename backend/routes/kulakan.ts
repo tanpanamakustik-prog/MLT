@@ -13,6 +13,7 @@ rutKulakan.use(wajibMasuk);
 /** Saran pembelian (Smart Kulakan). */
 rutKulakan.get(
   '/saran',
+  wajibPeran('owner', 'admin', 'gudang'),
   bungkus(async (req, res) => {
     res.json(await hitungSaranKulakan({ hanyaPerlu: req.query.hanya_perlu === '1' }));
   })
@@ -20,6 +21,7 @@ rutKulakan.get(
 
 rutKulakan.get(
   '/',
+  wajibPeran('owner', 'admin', 'gudang'),
   bungkus(async (req, res) => {
     const { dari, sampai, status } = req.query as Record<string, string>;
     const batas = Math.min(300, Math.max(1, Math.round(angka(req.query.batas, 100))));
@@ -43,6 +45,7 @@ rutKulakan.get(
 
 rutKulakan.get(
   '/:id',
+  wajibPeran('owner', 'admin', 'gudang'),
   bungkus(async (req, res) => {
     const id = Number(req.params.id);
     const po = await db.satu<any>(

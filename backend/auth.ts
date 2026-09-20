@@ -94,6 +94,17 @@ export function wajibPeran(...peran: Peran[]) {
  * wajibPeran di tiap rute. Sidebar yang menyembunyikan menu bukan pengaman —
  * setiap rute tetap memeriksa perannya sendiri.
  */
+/**
+ * Seluruh peran internal — semua kecuali buyer.
+ *
+ * Buyer memakai API yang sama dari APK. Rute yang hanya memanggil wajibMasuk
+ * tanpa menyebutkan peran karena itu terbuka untuk pembeli, dan itu berlaku
+ * juga untuk dashboard keuangan, daftar stok berisi harga beli, dan papan kerja
+ * pengiriman berisi alamat toko lain. Menyebutkan peran secara eksplisit di
+ * tiap rute lebih aman daripada mengandalkan menu yang menyembunyikannya.
+ */
+export const STAF: Peran[] = ['owner', 'admin', 'gudang', 'sales', 'driver'];
+
 export const AKSES_MODUL: Record<Peran, string[]> = {
   owner:  ['dashboard','penjualan','inventory','kulakan','pengiriman','customer','karyawan','absensi','aktivitas','laporan','audit','pengaturan'],
   admin:  ['dashboard','penjualan','inventory','kulakan','pengiriman','customer','karyawan','absensi','aktivitas','laporan','audit'],

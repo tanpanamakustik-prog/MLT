@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db, transaksi, ambilPengaturan } from '../db.js';
-import { wajibMasuk, wajibPeran } from '../auth.js';
+import { STAF, wajibMasuk, wajibPeran } from '../auth.js';
 import { catatAudit } from '../audit.js';
 import { simpanFoto } from '../berkas.js';
 import { hariIni, jamSekarang, jarakMeter, nomorBerikutnya } from '../util.js';
@@ -28,6 +28,7 @@ async function titikKantor() {
 
 rutOperasional.get(
   '/absensi/hari-ini',
+  wajibPeran(...STAF),
   bungkus(async (req, res) => {
     const baris = await db.satu(
       'SELECT * FROM absensi WHERE karyawan_id = $1 AND tanggal = $2::date',
@@ -118,19 +119,25 @@ async function catatAbsen(req: any, sesi: 'masuk' | 'pulang') {
   };
 }
 
-rutOperasional.post('/absensi/masuk', bungkus(async (req, res) => res.json(await catatAbsen(req, 'masuk'))));
-rutOperasional.post('/absensi/pulang', bungkus(async (req, res) => res.json(await catatAbsen(req, 'pulang'))));
+rutOperasional.post('/absensi/masuk', wajibPeran(...STAF), bungkus(async (req, res) => res.json(await catatAbsen(req, 'masuk'))));
+rutOperasional.post('/absensi/pulang', wajibPeran(...STAF), bungkus(async (req, res) => res.json(await catatAbsen(req, 'pulang'))));
 
 /* --------------------------------------------------------------- Aktivitas */
 
 rutOperasional.get(
   '/aktivitas',
+  wajibPeran(...STAF),
   bungkus(async (req, res) => {
     const pengguna = req.pengguna!;
     /* Peran lapangan hanya melihat aktivitasnya sendiri; owner dan admin melihat
        semuanya dan boleh menyaring per karyawan. */
     const bolehSemua = ['owner', 'admin'].includes(pengguna.peran);
     const karyawanId = bolehSemua ? (req.query.karyawan_id ? Number(req.query.karyawan_id) : null) : pengguna.karyawan_id;
+
+    /* Akun lapangan yang belum ditautkan ke data karyawan tidak punya aktivitas
+       sendiri. Diteruskan sebagai null, penyaringnya justru mati dan orang itu
+       melihat aktivitas seluruh karyawan. */
+    if (!bolehSemua && !karyawanId) return res.json([]);
     const dari = String(req.query.dari ?? hariIni());
     const sampai = String(req.query.sampai ?? hariIni());
 
@@ -151,6 +158,7 @@ rutOperasional.get(
 
 rutOperasional.post(
   '/aktivitas',
+  wajibPeran(...STAF),
   bungkus(async (req, res) => {
     const b = req.body ?? {};
     const foto = await simpanFoto(b.foto, 'aktivitas');
@@ -176,6 +184,7 @@ rutOperasional.post(
 
 rutOperasional.get(
   '/pengiriman',
+  wajibPeran('owner', 'admin', 'gudang', 'driver'),
   bungkus(async (req, res) => {
     const pengguna = req.pengguna!;
     const driverId = pengguna.peran === 'driver' ? pengguna.karyawan_id : req.query.driver_id ? Number(req.query.driver_id) : null;
@@ -201,6 +210,7 @@ rutOperasional.get(
 
 rutOperasional.get(
   '/pengiriman/:id',
+  wajibPeran('owner', 'admin', 'gudang', 'driver'),
   bungkus(async (req, res) => {
     const id = Number(req.params.id);
     const kirim = await db.satu<any>(
@@ -260,6 +270,7 @@ const URUTAN_KIRIM = ['ditugaskan', 'berangkat', 'sampai', 'bongkar', 'diterima'
  */
 rutOperasional.patch(
   '/pengiriman/:id/status',
+  wajibPeran('owner', 'admin', 'gudang', 'driver'),
   bungkus(async (req, res) => {
     const id = Number(req.params.id);
     const pengguna = req.pengguna!;
